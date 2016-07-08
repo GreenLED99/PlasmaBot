@@ -2,6 +2,7 @@ from plasmaBot.plugin import PBPlugin, PBPluginMeta, Response
 import discord
 
 from plasmaBot import exceptions
+import discord
 
 from SQLiteHelper import SQLiteHelper as sq
 
@@ -9,7 +10,7 @@ import logging
 log = logging.getLogger('discord')
 
 class ServerSecurity(PBPlugin):
-    name = 'Moderation Tools'
+    name = 'Server Security'
     requirements = None
     is_global = True
 
@@ -18,13 +19,45 @@ class ServerSecurity(PBPlugin):
 
         self.db = sq.Connect(self.bot.config.security_db)
 
-    async def cmd_whateveruwanttomakeit(self, message, message_type, message_context, argument1, argument2):
+    async def cmd_getroles(self, message):
+        """
+        You screwed up
+        """
+        roles = message.server.roles
+        ret = ""
+        for role in roles:
+            ret = ret + role.name + ": " + role.id + "\r"
+        ret = ret.replace("@" , "**@**")
+        return Response(ret, reply=False, delete_after=60)
+
+    async def cmd_setupsecurity(self, message, roleID, channelID):
         """
         Usage:
-            {command_prefix}command (arguments) (like) (this)
+            {command_prefix}setupsecurity (role ID) (channel ID)
 
-        A Statement about what this is useful for that will show if no arguments listed.
+        Ill tell you what this is once I figure out what this is
         """
+        server = message.server
+        verified_role = discord.utils.get(server.roles, id=roleID)
+        everyone_role = discord.utils.get(server.roles, name="@everyone")
+
+        #Change to if everyone can see, let verified see
+        overwrite = discord.PermissionOverwrite(read_messages = True)
+        for channel in server.channels:
+            await self.bot.edit_channel_permissions(channel, verified_role, overwrite)
+
+        overwrite = discord.PermissionOverwrite(read_messages = False)
+        for channel in server.channels:
+            await self.bot.edit_channel_permissions(channel, everyone_role, overwrite)
+
+
+
+        for member in server.members:
+            if verified_role not in member.roles:
+                await self.bot.add_roles(member, verified_role)
+
+
+
 
     # What I think this should do:
     # have a setup command that passes a role ID to be used for the verified ID and a channelID to be used as the entrance ID

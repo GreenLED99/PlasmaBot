@@ -145,7 +145,7 @@ class PBPlugin(object, metaclass=PBPluginMeta):
                             )
 
                         docs = '\n'.join(l.strip() for l in docs.split('\n'))
-                        await self.safe_send_message(
+                        await self.bot.safe_send_message(
                             message.channel,
                             '```\n%s\n```' % docs.format(command_prefix=self.bot.config.prefix),
                             expire_in=60 if self.bot.config.delete_messages else 0
