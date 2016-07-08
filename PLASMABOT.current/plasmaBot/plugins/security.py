@@ -41,12 +41,19 @@ class ServerSecurity(PBPlugin):
         verified_role = discord.utils.get(server.roles, id=roleID)
         everyone_role = discord.utils.get(server.roles, name="@everyone")
 
-        #Change to if everyone can see, let verified see
-        overwrite = discord.PermissionOverwrite(read_messages = True)
-        for channel in server.channels:
-            await self.bot.edit_channel_permissions(channel, verified_role, overwrite)
+        #Change to if everyone can see, let verified get everyone perms
 
-        overwrite = discord.PermissionOverwrite(read_messages = False)
+        can_read = discord.PermissionOverwrite(read_messages=True)
+        can_connect = discord.PermissionOverwrite(connect=True)
+        for channel in server.channels:
+            everyoneperms = channel.overwrites_for(everyone_role)
+            print(everyoneperms)
+            if everyoneperms.read_messages != False:
+                await self.bot.edit_channel_permissions(channel, verified_role, can_read)
+            if everyoneperms.connect != False:
+                await self.bot.edit_channel_permissions(channel, verified_role, can_connect)
+
+        overwrite = discord.PermissionOverwrite(read_messages=False, connect=False)
         for channel in server.channels:
             await self.bot.edit_channel_permissions(channel, everyone_role, overwrite)
 
