@@ -16,7 +16,6 @@ from plasmaBot.config import Config, ConfigDefaults
 from plasmaBot.plugin import PBPluginManager, Response, PBPluginMeta, PBPlugin
 
 from plasmaBot.plugins.bot_operation import BotOperation
-from plasmaBot.plugins.security import ServerSecurity
 
 # Logging setup
 logger = logging.getLogger('discord')
