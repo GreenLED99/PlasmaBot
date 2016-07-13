@@ -2,4 +2,4 @@ git+https://github.com/Rapptz/discord.py.git@async
 sqlitehelper
 requests
 datetime
-numpy
+numpy<1.11.0
