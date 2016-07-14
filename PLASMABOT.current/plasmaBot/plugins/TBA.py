@@ -19,18 +19,67 @@ class TBAPlugin(PBPlugin):
         super().__init__(plasmaBot)
         self.TBA = TBAParser(2403, "Discord Bot", "0.1.0")
 
-    async def cmd_test_tba(self, message):
-        """
-        You screwed up
-        """
-        test = self.TBA.get_team('frc2403')
-        what = test.nickname
-        return Response(what, reply=True, delete_after=20)
-
-    async def cmd_setupsecurity(self, message, roleID, channelID):
+    async def cmd_tba(self, message, leftover_args):
         """
         Usage:
-            {command_prefix}setupsecurity (role ID) (channel ID)
+            {command_prefix}TBA (Item to return) (Search Parameters)
 
         Ill tell you what this is once I figure out what this is
         """
+
+        try:
+            cmd_type= leftover_args[0]
+            del leftover_args[0]
+        except:
+            return Response('Missing secondary command. Must be either "team" or "event"', reply=False, delete_after=30)
+
+        if cmd_type == 'team':
+            param = ''
+            for partial_msg in leftover_args:
+                param += partial_msg + ' '
+            param = param[:-1]
+            try:
+                num = int(param)
+            except:
+                return Response('Not a valid team number. ```' + self.bot.config.prefix + 'tba team [Number]```', reply=False, delete_after=30)
+            key = "frc" + str(num)
+            try:
+                team = self.TBA.get_team(key)
+            except:
+                return Response('Something went wrong when looking up the team.', reply=False, delete_after=30)
+            if team.nickname == None:
+                return Response('Team does not exist.', reply=False, delete_after=30)
+            team_data = "Team " + str(team.team_number) + ": " + team.nickname + "\rFrom: " + team.location
+            if team.website != None:
+                team_data = team_data + "\rWebsite: " + team.website
+            if team.motto != None:
+                team_data = team_data + '\rMotto: "' + team.motto + '"'
+            return Response(team_data, reply=False, delete_after=60)
+
+        if cmd_type == 'event':
+            try:
+                year_str = leftover_args[0]
+                del leftover_args[0]
+                param = ''
+                for partial_msg in leftover_args:
+                    param += partial_msg + ' '
+                param = param[:-1]
+            except:
+                return Response('Additional arguments needed. ```' + self.bot.config.prefix + 'tba event [Year] [Beginning of event name]```', reply=False, delete_after=30)
+            try:
+                year = int(year_str)
+            except:
+                return Response('Year must be an integer.', reply=False, delete_after=30)
+            #try:
+            key = self.TBA.calc_event_key(year, param)
+            #except:
+            #    return Response('Unknown error looking up event key.', reply=False, delete_after=30)
+            if key == '1':
+                return Response('Multiple events found. Please refine your search.', reply=False, delete_after=30)
+            if key == '0':
+                return Response('No events found. Please ensure spelling is correct.', reply=False, delete_after=30)
+            event = self.TBA.get_event(key)
+            event_data = event.name + "\rYear: " + str(event.year) + "\rLocation: " + event.location + "\rDates: " + event.start_date + " to " + event.end_date + "\rEvent Type: " + event.event_type_string + "\rhttps://www.thebluealliance.com/event/" + event.key
+            return Response(event_data, reply=False, delete_after=60)
+
+        return Response('Invalid secondary command. Must be either "team" or "event"', reply=False, delete_after=60)

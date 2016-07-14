@@ -496,7 +496,7 @@ class TBAParser:
         events = np_array([[str(event['short_name']), str(event['key'])] for event in dictionary])
         ret = ''
         for sub in events[:, 0]:
-            if sub[:len(name)] == name:
+            if sub[:len(name)].lower() == name.lower():
                 if not ret == '':
                     print("Multiple events found. Please refine your search.")
                     return '1'
