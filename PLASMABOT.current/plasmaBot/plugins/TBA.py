@@ -34,7 +34,7 @@ class TBAPlugin(PBPlugin):
             no_response += '_Pulls Data from The Blue Alliance API_\n'
             no_response += ' • _' + self.bot.config.prefix + 'team (team\_number)_\n'
             no_response += '   • pulls Team Information\n'
-            no_response += ' • _' + self.bot.config.prefix + 'event (event\_name)_\n'
+            no_response += ' • _' + self.bot.config.prefix + 'event (year) (event\_name)_\n'
             no_response += '   • pulls Event Information\n'
 
             return Response(no_response, reply=False, delete_after=45)
