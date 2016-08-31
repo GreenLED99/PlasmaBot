@@ -20,6 +20,7 @@ from plasmaBot.defaults.database_tables import dbt_plugins, dbt_commands, dbt_se
 from plasmaBot.plugins.bot_operation import BotOperation
 from plasmaBot.plugins.TBA import TBAPlugin
 from plasmaBot.plugins.custom_commands import CustomCommands
+from plasmaBot.plugins.custom_event_messages import CustomEventMessages
 
 # Logging setup
 logger = logging.getLogger('discord')

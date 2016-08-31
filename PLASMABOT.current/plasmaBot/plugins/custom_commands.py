@@ -40,7 +40,10 @@ class CustomCommands(PBPlugin):
             return Response("Must include name of command as argument.", reply=False, delete_after=45)
 
         test_return = self.db.table(self.get_table_name(server.id)).select("RESPONSE").where("COMMAND").equals(name).execute()
-        return Response(test_return.fetchall()[0][0], reply=False, delete_after=45)
+        try:
+            return Response(test_return.fetchall()[0][0], reply=False, delete_after=45)
+        except:
+            return Response("Command does not exist.", reply=False, delete_after=45)
 
     async def cmd_customlist(self, server):
         """
@@ -64,6 +67,9 @@ class CustomCommands(PBPlugin):
 
         A string about how the plugin works
         """
+
+        if len(leftover_args) == 1:
+            return Response("Response cannot be null.", reply=False, delete_after=45)
 
         self.create_table(server.id)
         try:
@@ -110,8 +116,6 @@ class CustomCommands(PBPlugin):
         else:
             return Response("Command '" + leftover_args[0] + "' does not exist.", reply=False, delete_after=45)
 
-
-        return Response("Custom command " + leftover_args[0] + " deleted.", reply=False, delete_after=45)
 
 
 
