@@ -16,15 +16,15 @@ class PredictionsChat(PBPlugin):
     def __init__(self, plasmaBot):
         super().__init__(plasmaBot)
 
-        self.pl_config = PBPluginConfig(plasmaBot, 'predictions.ini', 'PREDICTIONS CHAT', {'Files':[['predictions_db_location', 'The location of the prediction database', 'data/predictions']]})
+        self.pl_config = PBPluginConfig(plasmaBot, 'predictions.ini', 'PREDICTIONS CHAT', {'Files':[['predictions_db_location', 'The location of the prediction database', 'data/predictions']], 'Channel':[['server_id', 'The ID of the server', '226572892471558144'],['channel_id', 'The ID of the channel', '228384812136661003']]})
 
         self.db = sq.Connect(self.pl_config.predictions_db_location)
 
         if not self.db.table("Predictions").tableExists():
             self.db.table("Predictions").withColumns("ID").withDataTypes("TEXT PRIMARY KEY NOT NULL").createTable()
 
-        self.server = '226572892471558144'
-        self.channel = '228384812136661003'
+        self.server = self.pl_config.server_id
+        self.channel = self.pl_config.channel_id
         self.bot_deleted_messages = []
 
     async def on_message(self, message, message_type, message_context):
