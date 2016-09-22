@@ -25,6 +25,7 @@ from plasmaBot.plugins.moderation import Moderation
 from plasmaBot.plugins.utilities import Utilities
 from plasmaBot.plugins.meme_generator import MemeGenerator
 from plasmaBot.plugins.custom_commands import CustomCommands
+from plasmaBot.plugins.predictions_chat import PredictionsChat
 
 # Logging setup
 logger = logging.getLogger('discord')
