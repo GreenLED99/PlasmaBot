@@ -1,7 +1,3 @@
 *.pyc
-
 *.db
-
-config/*.ini
-
-plasmaBot/plugins/pl_config/*.ini
+.python-version
