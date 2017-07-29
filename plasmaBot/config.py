@@ -25,14 +25,6 @@ class Config(collections.MutableMapping):
         self.yaml = YAML(typ='rt')
         self.yaml.preserve_quotes = True
 
-        self.config_files = self.__detect_config_files()
-
-        self.config_dict = self.__reload_config()
-
-        defaults_stream = open(self.defaults, 'r')
-        self.defaults_dict = self.yaml.load(defaults_stream)
-        defaults_stream.close()
-
         if not os.path.isfile(self.path):
             self.client.printer.warning('Config File Missing.  Copying Backup File to \'{}\'...'.format(self.path))
 
@@ -43,6 +35,14 @@ class Config(collections.MutableMapping):
                 self.client.printer.warning('Backup File missing.  Please restore the backup file {} and restart the bot.'.format(self.defaults), tag=2, cmd=False)
 
             self.client.shutdown()
+
+        self.config_files = self.__detect_config_files()
+
+        self.config_dict = self.__reload_config()
+
+        defaults_stream = open(self.defaults, 'r')
+        self.defaults_dict = self.yaml.load(defaults_stream)
+        defaults_stream.close()
 
     def __detect_config_files(self):
         root_directory = os.getcwd()
