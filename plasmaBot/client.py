@@ -93,7 +93,7 @@ class Client(discord.AutoShardedClient):
 
         except discord.errors.LoginFailure:
             self.printer.warning('ERROR: Cannot log in to Discord due to Invalid Credentials.')
-            self.printer.explain('Please check credentials and try again.', cmd=False)
+            self.printer.explain('\nPlease check credentials and try again.', cmd=False)
             raise Shutdown
 
         except (Shutdown, Restart, ErrorRestart):
