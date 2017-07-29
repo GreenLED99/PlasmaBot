@@ -1,0 +1,5 @@
+git+discord.py[voice]
+sqlitehelper
+ruamel.yaml<0.15
+colorama
+tbapi

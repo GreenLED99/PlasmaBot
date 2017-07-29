@@ -1,0 +1,32 @@
+# DO NOT OPEN THIS FILE IN NOTEPAD. OPENING AND SAVING THIS FILE WITH NOTEPAD MAY CAUSE DATA CORRUPTION.
+# PLEASE USE A MORE MODERN CODE-EDITOR. A FREE, CROSS-PLATFORM SOLUTION CAN BE FOUND AT HTTPS://WWW.ATOM.IO
+
+token: place_token_here # The Bot Token used to connect to the Discord Servers.  Only Bot Accounts Supported due to sharding.
+
+presence: # Configuration Items impacting the look of the Client throughout Discord
+  name: PlasmaBot # The Name of the Bot used throughout help messages and error reports
+  prefix: ">" # The Global Command Prefix. Change this to prevent interference with other bots.
+  game: "<prefix>help | <s_count> server<s_plural>" # The "game" to show as "playing" on the discord sidemenu.  MODIFIERS: <name> adds the bot name to the visible game. <prefix> adds the bot prefix to the visible game. <s_count> adds the number of servers to the visible game.  <s_plural> is a pluralization character ("s") that shows only if the bot is in more then 1 server.
+  status: "online" # str representing bot status.  Either "online", "idle", "dnd", or "invisible"
+  stream: # Alternate Stream Status that takes priority over all 'status' except "invisible"
+    enabled: True # bool: Show bot status as Streaming.
+    url: "https://www.twitch.tv/discordapp" # The stream URL to link to. Link must be twitch for stream to show properly.
+
+permissions: # Configuration Items impacting the abilities of certain users
+  invites: True # bool: Whether or not to allow users to invite the bot to their own servers
+  owners: # The IDs of Full-Permissioned Bot Owners as integer IDs
+    - 000000000000000000 # Add more rows to expand Bot Owners
+
+commands: # Configuration Items relating to the processing of Plugin Commands
+  mute-hidden: True # bool: Mute return of 'hidden' commands in case of error or lacking permissions
+
+logging: # Configuration Items relating to the logging of messages and errors
+  errors: # Error Logging Settings
+    enabled: False # bool: Enable error traceback logging
+    channel: 000000000000000000 # Channel ID to which to log tracebacks
+
+terminal: # Configuration Items regarding the Client's command line interface
+  enabled: True # bool:  Enable the command line interface
+  prefix: "/" # The prefix for commands sent through the terminal
+  messaging: True # bool:  Whether or not to enable channel messaging from the command line
+  channel: 000000000000000000 # Channel ID to which the terminal interface is bound
