@@ -69,36 +69,40 @@ class Printer:
     def indicate(self, content, *, tag=1, cmd=True, replace=True, beg_newline=False, end_newline=False, flush=True, color=''):
         """Standard Indication Print Statement"""
         if self.client:
-            if not self.client.terminal.enabled and cmd:
-                cmd = False
-                beg_newline = True
+            if hasattr(self.client, 'terminal'):
+                if not self.client.terminal.enabled and cmd:
+                    cmd = False
+                    beg_newline = True
 
         return self.__print(content, tag=tag, cmd=cmd, replace=replace, beg_newline=beg_newline, end_newline=end_newline, flush=flush, color=color)
 
     def explain(self, content, *, tag=2, cmd=True, replace=True, beg_newline=False, end_newline=False, flush=True, color=''):
         """Print Statement meant to give extra information"""
         if self.client:
-            if not self.client.terminal.enabled and cmd:
-                cmd = False
-                beg_newline = True
+            if hasattr(self.client, 'terminal'):
+                if not self.client.terminal.enabled and cmd:
+                    cmd = False
+                    beg_newline = True
 
         return self.__print(content, tag=tag, cmd=cmd, replace=replace, beg_newline=beg_newline, end_newline=end_newline, flush=flush, color=color)
 
     def warning(self, content, *, tag=1, cmd=True, replace=True, beg_newline=False, end_newline=False, flush=True, color=colorama.Fore.RED):
         """Warning Print Statement"""
         if self.client:
-            if not self.client.terminal.enabled and cmd:
-                cmd = False
-                beg_newline = True
+            if hasattr(self.client, 'terminal'):
+                if not self.client.terminal.enabled and cmd:
+                    cmd = False
+                    beg_newline = True
 
         return self.__print(content, tag=tag, cmd=cmd, replace=replace, beg_newline=beg_newline, end_newline=end_newline, flush=flush, color=color)
 
     def success(self, content, *, tag=1, cmd=True, replace=True, beg_newline=False, end_newline=False, flush=True, color=colorama.Fore.GREEN):
         """Success Print Statement"""
         if self.client:
-            if cmd and self.client.ready and not self.client.terminal.enabled:
-                cmd = False
-                beg_newline = True
+            if hasattr(self.client, 'terminal'):
+                if not self.client.terminal.enabled and cmd:
+                    cmd = False
+                    beg_newline = True
 
         return self.__print(content, tag=tag, cmd=cmd, replace=replace, beg_newline=beg_newline, end_newline=end_newline, flush=flush, color=color)
 
