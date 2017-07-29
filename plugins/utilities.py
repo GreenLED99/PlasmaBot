@@ -7,7 +7,7 @@ from plasmaBot.utils import databaseTable
 
 import discord
 
-STATE_DEFAULTS = databaseTable(['USER_ID', 'STATE', 'MESSAGE'],
+STATUS_DEFAULTS = databaseTable(['USER_ID', 'STATUS', 'MESSAGE'],
                                ['INT PRIMARY KEY NOT NULL', 'TEXT NOT NULL', 'TEXT NOT NULL'])
 
 class Status(Plugin):
@@ -19,10 +19,10 @@ class Status(Plugin):
         """Event fired on plugin load.  Initializes Plugin elements."""
         self.db = sq.Connect('plasmaBot/data/status')
 
-        if not self.db.table('user_state').tableExists():
-            self.db.table('user_state').init(STATE_DEFAULTS)
+        if not self.db.table('status').tableExists():
+            self.db.table('status').init(STATUS_DEFAULTS)
 
-    @command('afk', '0', description='Set your state as AFK!', usage='afk [afk_message]', permission='owner')
+    @command('afk', '0', description='Set your state as AFK!', usage='afk [afk_message]')
     async def afk_command(self, author, content, user_mentions, role_mentions):
         """Channel AFK command: Allows users to set their state as afk."""
         if author.bot:
@@ -39,20 +39,71 @@ class Status(Plugin):
         if len(afk_message) > 200:
             return ChannelResponse('Invalid! AFK Message must be 200 characters or Less!')
 
-        states = self.db.table('user_state').select('STATE').where('USER_ID').equals(author.id).execute()
-        user_state = None
+        states = self.db.table('status').select('STATUS').where('USER_ID').equals(author.id).execute()
+        user_status = None
 
         for user in states:
-            user_state = user[0]
+            user_status = user[0]
 
-        if user_state:
-            self.db.table('user_state').update('STATE').setTo('AFK').where('USER_ID').equals(author.id).execute()
-            self.db.table('user_state').update('MESSAGE').setTo(afk_message).where('USER_ID').equals(author.id).execute()
+        if user_status:
+            self.db.table('status').update('STATUS').setTo('AFK').where('USER_ID').equals(author.id).execute()
+            self.db.table('status').update('MESSAGE').setTo(afk_message).where('USER_ID').equals(author.id).execute()
         else:
-            self.db.table('user_state').insert(author.id, 'AFK', afk_message).into('USER_ID', 'STATE', 'MESSAGE')
+            self.db.table('status').insert(author.id, 'AFK', afk_message).into('USER_ID', 'STATUS', 'MESSAGE')
 
-        return ChannelResponse(embed=discord.Embed(color=discord.Colour.purple()).set_author(name='{} is AFK:   {}'.format(author.display_name, afk_message), icon_url=author.avatar_url))
+        return ChannelResponse(embed=discord.Embed(color=discord.Colour.purple()).set_author(name='{} is AFK:   {}'.format(author.display_name, afk_message), icon_url=author.avatar_url), expire=0)
+
+    async def clear_status(self, user, channel):
+        """Clear the status of a given user from the status database table"""
+        states = self.db.table('status').select('STATUS').where('USER_ID').equals(user.id).execute()
+        user_status = None
+
+        for entry in states:
+            user_status = entry[0]
+
+        if user_status:
+            async with channel.typing():
+                self.db.table('status').delete().where('USER_ID').equals(user.id).execute()
+                await channel.send(embed=discord.Embed(color=discord.Colour.purple()).set_author(name='{} is no longer {}.'.format(user.display_name, user_status), icon_url=user.avatar_url), delete_after=15)
+
+    async def announce_status(self, mentions, channel):
+        """Announce the AFK status of a given user in a given channel"""
+        if len(mentions) == 0:
+            return
+
+        afk_members = []
+
+        for user in mentions:
+            states = self.db.table('status').select('STATUS', 'MESSAGE').where('USER_ID').equals(user.id).execute()
+            user_status = None
+            message = ''
+
+            for entry in states:
+                user_status = entry[0]
+                message = entry[1]
+
+            if user_status == 'AFK':
+                afk_members += [[user, message]]
+
+        if len(afk_members) == 1:
+            async with channel.typing():
+                await channel.send(embed=discord.Embed(color=discord.Colour.purple()).set_author(name='{} is AFK: {}'.format(afk_members[0][0].display_name, afk_members[0][1]), icon_url=afk_members[0][0].avatar_url), delete_after=15)
+        elif len(afk_members) >= 1:
+            async with channel.typing():
+                if len(afk_members) >= 10:
+                    await channel.send(embed=discord.Embed(color=discord.Colour.purple()).set_author(name='Many Members are AFK', icon_url=self.client.user.avatar_url), delete_after=15)
+                else:
+                    users = '{}'.format(afk_members.pop(0)[0].display_name)
+                    end_users = ' & {}'.format(afk_members.pop(-1)[0].display_name)
+
+                    for user in afk_members:
+                        users += ', {}'.format(user[0].display_name)
+
+                    await channel.send(embed=discord.Embed(color=discord.Colour.purple()).set_author(name='{} are AFK'.format(users + end_users), icon_url=self.client.user.avatar_url), delete_after=15)
 
     @event
     async def on_message(self, message):
-        pass
+        """PLUGIN EVENT: Client.on_message()"""
+        if not message.content.startswith('{}afk'.format(self.config['presence']['prefix'])):
+            await self.clear_status(message.author, message.channel)
+            await self.announce_status(message.mentions, message.channel)
