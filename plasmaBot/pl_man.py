@@ -144,7 +144,7 @@ class PluginManager(object):
 
                     help_embed.add_field(name='{} Plugin:'.format(fancy_name), value=plugin_command_string, inline=False)
 
-                help_embed.set_footer(text='Requested by {}'.format(user.display_name), icon_url=user.avatar_url)\
+                help_embed.set_footer(text='Requested by {}'.format(user.display_name), icon_url=discord.Embed.Empty)
 
                 await channel.send(embed=help_embed, delete_after=60, reason='Help Message Automatic Deletion')
 
@@ -302,7 +302,7 @@ class PluginManager(object):
                         params.pop(key)
 
                 if params:
-                    help_embed = discord.Embed(title='Command Usage for `{}{}` ({} Plugin):'.format(prefix, handler.strip(), fancy_plugin), color=discord.Colour.red()).set_footer(text='Requested by {}'.format(message.author.display_name), icon_url=message.author.avatar_url).add_field(name='Command Description', value=description, inline=False).add_field(name='Usage', value='{}{}'.format(prefix, usage), inline=False)
+                    help_embed = discord.Embed(title='Command Usage for `{}{}` ({} Plugin):'.format(prefix, handler.strip(), fancy_plugin), color=discord.Colour.red()).set_footer(text='Requested by {}'.format(message.author.display_name), icon_url=discord.Embed.Empty).add_field(name='Command Description', value=description, inline=False).add_field(name='Usage', value='{}{}'.format(prefix, usage), inline=False)
 
                     await message.channel.send(embed=help_embed, delete_after=30, reason='Help Message Automatic Deletion')
                     return
@@ -313,7 +313,7 @@ class PluginManager(object):
 
                 if response and isinstance(response, ChannelResponse):
                     if response.send_help:
-                        help_embed = discord.Embed(title='Command Usage for `{}{}` ({} Plugin):'.format(prefix, handler.strip(), fancy_plugin), color=discord.Colour.red()).set_footer(text='Requested by {}'.format(message.author.display_name), icon_url=message.author.avatar_url).add_field(name='Command Description', value=description, inline=False).add_field(name='Usage', value='{}{}'.format(prefix, usage), inline=False)
+                        help_embed = discord.Embed(title='Command Usage for `{}{}` ({} Plugin):'.format(prefix, handler.strip(), fancy_plugin), color=discord.Colour.red()).set_footer(text='Requested by {}'.format(message.author.display_name), icon_url=discord.Embed.Empty).add_field(name='Command Description', value=description, inline=False).add_field(name='Usage', value='{}{}'.format(prefix, usage), inline=False)
 
                         await message.channel.send(embed=help_embed, delete_after=response.expire, reason='Help Message Automatic Deletion')
                         return

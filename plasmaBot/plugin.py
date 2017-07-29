@@ -27,19 +27,19 @@ def event(event_method):
 
 class ChannelResponse(object):
     """A Response to a given channel command."""
-    def __init__(self, *, content=None, embed=None, file=None, expire=None, send_help=False, mentions=False):
+    def __init__(self, *, content=None, embed=None, file=None, expire=30, send_help=False, mentions=False):
         if send_help:
             self.send_help = True
             self.content = None
             self.file = None
             self.embed = None
-            self.expire = 30 if not expire else expire
+            self.expire = expire
         else:
             self.send_help = False
             self.content = content.replace('@everyone', '@\u200beveryone').replace('@here', '@\u200bhere') if not (content == None or mentions) else content
             self.file = file
             self.embed = embed
-            self.expire = 30 if not expire else expire
+            self.expire = expire
 
 
 class TerminalResponse(object):
