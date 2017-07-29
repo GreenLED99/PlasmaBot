@@ -22,11 +22,8 @@ class Status(Plugin):
         if not self.db.table('status').tableExists():
             self.db.table('status').init(STATUS_DEFAULTS)
 
-    @command('afk', '0', description='Set your state as AFK!', usage='afk [afk_message]')
+    @command('afk', 0, description='Set your state as AFK!', usage='afk [afk_message]')
     async def afk_command(self, author, content, user_mentions, role_mentions):
-        """Channel AFK command: Allows users to set their state as afk."""
-        if author.bot:
-            return ChannelResponse('Invalid! Bot Accounts are not allowed to be AFK!')
 
         afk_message = content.replace('\n', ' ').replace('@everyone', '@\u200beveryone').replace('@here', '@\u200bhere')
 
@@ -53,11 +50,9 @@ class Status(Plugin):
 
         return ChannelResponse(embed=discord.Embed(color=discord.Colour.purple()).set_author(name='{} is AFK:   {}'.format(author.display_name, afk_message), icon_url=author.avatar_url), expire=None)
 
-    @command('sleep', '0', description='Set your state as asleep!', usage='sleep')
+    @command('sleep', 0, description='Set your state as asleep!', usage='sleep')
     async def sleep_command(self, author):
         """Channel AFK command: Allows users to set their state as asleep."""
-        if author.bot:
-            return ChannelResponse('Invalid! Bot Accounts are not allowed to be asleep!')
 
         states = self.db.table('status').select('STATUS').where('USER_ID').equals(author.id).execute()
         user_status = None
