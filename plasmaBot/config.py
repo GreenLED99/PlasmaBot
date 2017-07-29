@@ -6,6 +6,8 @@ import collections
 
 from ruamel.yaml import YAML
 
+from plasmaBot.utils import Shutdown
+
 
 class ConfigException(Exception):
     """An Exception thrown when a config key does not exist in either the main or backup config files."""
@@ -34,7 +36,7 @@ class Config(collections.MutableMapping):
             except Exception:
                 self.client.printer.warning('Backup File missing.  Please restore the backup file {} and restart the bot.'.format(self.defaults), tag=2, cmd=False)
 
-            self.client.shutdown()
+            raise Shutdown
 
         self.config_files = self.__detect_config_files()
 
