@@ -100,7 +100,8 @@ class Status(Plugin):
                 user_status = entry[0]
                 message = entry[1]
 
-            offline_members += [user]
+            if user_status:
+                offline_members += [user]
 
             if user_status == 'AFK':
                 afk_members += [[user, message]]
