@@ -48,7 +48,7 @@ class Status(Plugin):
         else:
             self.db.table('status').insert(author.id, 'AFK', afk_message).into('USER_ID', 'STATUS', 'MESSAGE')
 
-        return ChannelResponse(embed=discord.Embed(color=discord.Colour.purple()).set_author(name='{} is AFK:   {}'.format(author.display_name, afk_message), icon_url=author.avatar_url), expire=None)
+        return ChannelResponse(embed=discord.Embed(color=discord.Colour.purple()).set_author(name='{} is AFK{}   {}'.format(author.display_name, ':' if len(afk_message) >= 1 else '', afk_message), icon_url=author.avatar_url), expire=None)
 
     @command('sleep', 0, description='Set your state as asleep!', usage='sleep')
     async def sleep_command(self, author):
@@ -110,7 +110,7 @@ class Status(Plugin):
         if len(offline_members) == 1:
             if len(afk_members) == 1:
                 async with channel.typing():
-                    await channel.send(embed=discord.Embed(color=discord.Colour.purple()).set_author(name='{} is AFK: {}'.format(afk_members[0][0].display_name, afk_members[0][1]), icon_url=afk_members[0][0].avatar_url), delete_after=15)
+                    await channel.send(embed=discord.Embed(color=discord.Colour.purple()).set_author(name='{} is AFK{}  {}'.format(afk_members[0][0].display_name, ':' if len(afk_members[0][1]) >= 1 else '', afk_members[0][1]), icon_url=afk_members[0][0].avatar_url), delete_after=15)
             elif len(sleep_members) == 1:
                 async with channel.typing():
                     await channel.send(embed=discord.Embed(color=discord.Colour.purple()).set_author(name='{} is sleeping.  💤'.format(afk_members[0][0].display_name), icon_url=afk_members[0][0].avatar_url), delete_after=15)
