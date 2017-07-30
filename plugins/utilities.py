@@ -114,7 +114,7 @@ class Status(Plugin):
                     await channel.send(embed=discord.Embed(color=discord.Colour.purple()).set_author(name='{} is AFK{}  {}'.format(afk_members[0][0].display_name, ':' if len(afk_members[0][1]) >= 1 else '', afk_members[0][1]), icon_url=afk_members[0][0].avatar_url), delete_after=15)
             elif len(sleep_members) == 1:
                 async with channel.typing():
-                    await channel.send(embed=discord.Embed(color=discord.Colour.purple()).set_author(name='{} is sleeping.  💤'.format(afk_members[0].display_name), icon_url=afk_members[0].avatar_url), delete_after=15)
+                    await channel.send(embed=discord.Embed(color=discord.Colour.purple()).set_author(name='{} is sleeping.  💤'.format(sleep_members[0].display_name), icon_url=sleep_members[0].avatar_url), delete_after=15)
         elif len(offline_members) >= 1:
             async with channel.typing():
                 if len(offline_members) >= 10:
