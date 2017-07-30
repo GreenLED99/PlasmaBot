@@ -97,7 +97,7 @@ class Terminal(object):
             content = content.replace('<@&{}>'.format(role.id), '{}@{}{}'.format(self.printer.Back.GREEN + self.printer.Fore.WHITE, role.name, self.printer.Style.RESET_ALL))
 
         for channel in message.channel_mentions:
-            content = content.replace('<#{}>'.format(channel.id), '{}@{}{}'.format(self.printer.Back.YELLOW + self.printer.Fore.WHITE, channel.name, self.printer.Style.RESET_ALL))
+            content = content.replace('<#{}>'.format(channel.id), '{}#{}{}'.format(self.printer.Back.YELLOW + self.printer.Fore.WHITE, channel.name, self.printer.Style.RESET_ALL))
 
         content = re.sub(self.single_backtick_regex, self.single_backtick_substring, content, 0)
         content = re.sub(self.tripple_backtick_regex, self.tripple_backtick_substring, content, 0)
