@@ -119,11 +119,11 @@ class Status(Plugin):
                 if len(offline_members) >= 10:
                     await channel.send(embed=discord.Embed(color=discord.Colour.purple()).set_author(name='Many people are Offline', icon_url=self.client.user.avatar_url), delete_after=15)
                 else:
-                    users = '{}'.format(offline_members.pop(0)[0].display_name)
-                    end_users = ' & {}'.format(offline_members.pop(-1)[0].display_name)
+                    users = '{}'.format(offline_members.pop(0).display_name)
+                    end_users = ' & {}'.format(offline_members.pop(-1).display_name)
 
                     for user in offline_members:
-                        users += ', {}'.format(user[0].display_name)
+                        users += ', {}'.format(user.display_name)
 
                     await channel.send(embed=discord.Embed(color=discord.Colour.purple()).set_author(name='{} are Offline'.format(users + end_users), icon_url=self.client.user.avatar_url), delete_after=15)
 
