@@ -74,6 +74,44 @@ class Terminal(object):
             self.guild = None
             self.guild_user = None
 
+    async def process_embed(self, embed):
+        """Method that processes a given embed into a descriptive string equivalent for display in the terminal"""
+        embed_string = ''
+
+        if not embed.title == discord.Embed.Empty:
+            embed_string += '{}\n'.format(embed.title)
+
+        if not embed.description == discord.Embed.Empty:
+            embed_string += 'Description: {}\n'.format(embed.description)
+
+        if not embed.provider.name == discord.Embed.Empty:
+            embed_string += 'Provider Name: {}\n'.format(embed.provider.name)
+
+        if not embed.provider.url == discord.Embed.Empty:
+            embed_string += 'Provider URL: {}\n'.format(embed.provider.url)
+
+        if not embed.author.name == discord.Embed.Empty:
+            embed_string += '{}{}\n'.format(embed.author.name, ' - {}'.format(embed.author.url) if not embed.author.url == discord.Embed.Empty else '')
+
+        for field in embed.fields:
+            name_str = '' if field.name == discord.Embed.Empty else field.name
+            val_str = '' if field.value == discord.Embed.Empty else field.value
+
+            if not name_str == '' and not val_str == '':
+                seperator = '\n - '
+            else:
+                seperator = ''
+
+            embed_string += name_str + seperator + val_str + '\n'
+
+        if not embed.footer.text == discord.Embed.Empty:
+            embed_string += '\n{}'.format(embed.footer.text)
+
+        if embed_string[-1:] == '\n':
+            embed_string = embed_string[:-1]
+
+        return embed_string
+
     async def display_message(self, message):
         """Write Message Contents to the Terminal for user viewing"""
         if not self.client.ready:
@@ -83,9 +121,6 @@ class Terminal(object):
             return
 
         content = str(message.content).strip()
-
-        if len(message.embeds) >= 1:
-            content += ' [Embed Attached]'
 
         for user in message.mentions:
             if not user == self.client.user:
@@ -105,6 +140,11 @@ class Terminal(object):
         content = content.strip().replace('\n', '\n                ')
 
         content = self.printer.Back.BLACK + self.printer.Fore.MAGENTA + '[MESSAGE]' + self.printer.Style.RESET_ALL + ' ' + content
+
+        if len(message.embeds) >= 1:
+            for embed in message.embeds:
+                embed_str = await self.process_embed(embed)
+                content += '{}{}{}{}'.format('' if message.content == '' else '\n', self.printer.Fore.MAGENTA, embed_str.replace('\n', '{}\n                {}'.format(self.printer.Style.RESET_ALL, self.printer.Fore.MAGENTA)), self.printer.Style.RESET_ALL)
 
         content += ' ~ {}#{} ({} '.format(message.author.name, message.author.discriminator, message.author.display_name)
 
