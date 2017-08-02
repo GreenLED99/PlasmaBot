@@ -8,6 +8,9 @@ DBT_COMMANDS = databaseTable(['HANDLER', 'PLUGIN', 'METHOD_NAME', 'TYPE', 'DESCR
 DBT_PLUGINS = databaseTable(['CLASS_NAME', 'FANCY_NAME', 'ENABLED', 'G_WHITELIST', 'C_WHITELIST', 'G_BLACKLIST', 'C_BLACKLIST'],
                             ['TEXT PRIMARY KEY NOT NULL', 'TEXT DEFAULT ""', 'INTEGER NOT NULL', 'TEXT DEFAULT ""', 'TEXT DEFAULT ""', 'TEXT DEFAULT ""', 'TEXT DEFAULT ""'])
 
+DBT_PLUGIN_SERVER_STATUS = databaseTable(['CLASS_NAME'],
+                                         ['TEXT PRIMARY KEY NOT NULL'])
+
 DBT_EVENTS = databaseTable(['EVENT_NAME', 'PLUGIN'],
                            ['TEXT NOT NULL', 'TEXT NOT NULL'])
 

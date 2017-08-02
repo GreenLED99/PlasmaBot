@@ -2,6 +2,7 @@
 
 from SQLiteHelper import SQLiteHelper as sq
 import discord
+import copy
 
 from plasmaBot.defaults.tbl_presets import DBT_BLACKLIST, DBT_PERMS_CHANNEL_USERS, DBT_PERMS_GUILD_USERS, DBT_PERMS_CHANNEL_ROLES, DBT_PERMS_GUILD_ROLES
 
@@ -164,25 +165,37 @@ class Permissions(object):
 
     def register(self, permission_name, default_value, category=None):
         """Register an permission value in the current bot instance."""
+        permission_name == permission_name.replace(' ', '').replace(';', '').replace('(', '').replace(')', '').replace('-', '')
         permission_info = {'default':default_value, 'category': category}
         self.permissions[str(permission_name)] = permission_info
         self.permission_list += [str(permission_name)]
 
+        res = self.conn.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        for table_return in res:
+            table_name = table_return[0]
+
+            if table_name.startswith('CHANNEL') or table_name.startswith('GUILD'):
+                if not self.__check_for_column(table_name, permission_name):
+                    self.conn.execute('ALTER TABLE {} ADD COLUMN {} INTEGER DEFAULT 0'.format(str(table_name), str(permission_name)))
+
+        self.conn.commit()
+
     def __check_for_column(self, table, column):
         """Check if a column exists in a given table"""
-        names = [str(description[0]) for description in self.conn.execute('SELECT * FROM ?', str(table)).description]
+        table_contents = self.cursor.execute('SELECT * FROM {} LIMIT 1'.format(table))
+        description = self.cursor.description
+        names = list(map(lambda x: x[0], description))
         return True if str(column) in names else False
 
-    def __create_permission_columns(self, table, permission=None):
-        """When initializing a table, also initialize all permission columns from the local record"""
-        if isinstance(permission, str):
-            local_permission_list = [permission]
-        elif isinstance(permission, list):
-            local_permission_list = permission
-        else:
-            local_permission_list = self.permission_list
+    def __initialize_permission_table(self, table, default_obj):
+        """Initialize a table, with current registered permission columns included"""
+        init_obj = copy.copy(default_obj)
 
-        self.cursor.executemany('ALTER TABLE {} ADD COLUMN ? INTEGER DEFAULT 0'.format(table), [(column_name,) for column_name in local_permission_list])
+        for column_name in self.permission_list:
+            init_obj.columns += [column_name]
+            init_obj.datatypes += ['INTEGER']
+
+        self.db.table(table).init(init_obj)
 
     def __get_table_permission_value(self, table, permission_name, id_value):
         """Get the raw value of a bot permission for a given user in a given database table"""
@@ -230,66 +243,50 @@ class Permissions(object):
 
         if isinstance(location, discord.abc.GuildChannel):
             if not self.db.table('CHANNEL_U{}'.format(location.id)).tableExists():
-                self.db.table('CHANNEL_U{}'.format(location.id).init(DBT_PERMS_CHANNEL_USERS))
-                self.__create_permission_columns('CHANNEL_U{}'.format(location.id))
+                self.__initialize_permission_table('CHANNEL_U{}'.format(location.id), DBT_PERMS_CHANNEL_USERS)
             else:
-                if not self.__check_for_column('CHANNEL_U{}'.format(location.id), permission_name):
-                    self.__create_permission_columns('CHANNEL_U{}'.format(location.id), permission_name)
-                else:
-                    raw_value = self.__get_table_permission_value('CHANNEL_U{}'.format(location.id), permission_name, user.id)
+                raw_value = self.__get_table_permission_value('CHANNEL_U{}'.format(location.id), permission_name, user.id)
+
+                if raw_value == 1:
+                    return True
+                elif raw_value == -1:
+                    return False
+
+            if not self.db.table('CHANNEL_R{}'.format(location.id)).tableExists():
+                self.__initialize_permission_table('CHANNEL_R{}'.format(location.id), DBT_PERMS_CHANNEL_ROLES)
+            else:
+                roles = sorted(user.roles, key=lambda x: x.position, reverse=True)
+
+                for role in roles:
+                    raw_value = self.__get_table_permission_value('CHANNEL_R{}'.format(location.id), permission_name, role.id)
 
                     if raw_value == 1:
                         return True
                     elif raw_value == -1:
                         return False
 
-            if not self.db.table('CHANNEL_R{}'.format(location.id)).tableExists():
-                self.db.table('CHANNEL_R{}'.format(location.id).init(DBT_PERMS_CHANNEL_ROLES))
-                self.__create_permission_columns('CHANNEL_R{}'.format(location.id))
-            else:
-                if not self.__check_for_column('CHANNEL_R{}'.format(location.id), permission_name):
-                    self.__create_permission_columns('CHANNEL_R{}'.format(location.id), permission_name)
-                else:
-                    roles = sorted(user.roles, key=lambda x: x.position, reverse=True)
-
-                    for role in roles:
-                        raw_value = self.__get_table_permission_value('CHANNEL_R{}'.format(location.id), permission_name, role.id)
-
-                        if raw_value == 1:
-                            return True
-                        elif raw_value == -1:
-                            return False
-
         if not self.db.table('GUILD_U{}'.format(guild.id)).tableExists():
-            self.db.table('GUILD_U{}'.format(guild.id).init(DBT_PERMS_GUILD_USERS))
-            self.__create_permission_columns('GUILD_U{}'.format(guild.id))
+            self.__initialize_permission_table('GUILD_U{}'.format(location.id), DBT_PERMS_GUILD_USERS)
         else:
-            if not self.__check_for_column('GUILD_U{}'.format(location.id), permission_name):
-                self.__create_permission_columns('GUILD_U{}'.format(location.id), permission_name)
-            else:
-                raw_value = self.__get_table_permission_value('GUILD_U{}'.format(location.id), permission_name, user.id)
+            raw_value = self.__get_table_permission_value('GUILD_U{}'.format(location.id), permission_name, user.id)
+
+            if raw_value == 1:
+                return True
+            elif raw_value == 0:
+                return False
+
+        if not self.db.table('GUILD_R{}'.format(guild.id)).tableExists():
+            self.__initialize_permission_table('GUILD_R{}'.format(location.id), DBT_PERMS_GUILD_ROLES)
+        else:
+            roles = sorted(user.roles, key=lambda x: x.position, reverse=True)
+
+            for role in roles:
+                raw_value = self.__get_table_permission_value('GUILD_R{}'.format(guild.id), permission_name, role.id)
 
                 if raw_value == 1:
                     return True
                 elif raw_value == 0:
                     return False
-
-        if not self.db.table('GUILD_R{}'.format(guild.id)).tableExists():
-            self.db.table('GUILD_R{}'.format(guild.id).init(DBT_PERMS_GUILD_ROLES))
-            self.__create_permission_columns('GUILD_R{}'.format(guild.id))
-        else:
-            if not self.__check_for_column('GUILD_R{}'.format(guild.id), permission_name):
-                self.__create_permission_columns('GUILD_R{}'.format(guild.id), permission_name)
-            else:
-                roles = sorted(user.roles, key=lambda x: x.position, reverse=True)
-
-                for role in roles:
-                    raw_value = self.__get_table_permission_value('GUILD_R{}'.format(guild.id), permission_name, role.id)
-
-                    if raw_value == 1:
-                        return True
-                    elif raw_value == 0:
-                        return False
 
         return bool(self.permissions[permission_name]['default'])
 
@@ -303,9 +300,6 @@ class Permissions(object):
             database_value = 0
 
         if isinstance(target, discord.Role):
-            if not self.__check_for_column('CHANNEL_R{}'.format(channel.id), permission_name):
-                self.__create_permission_columns('CHANNEL_R{}'.format(channel.id), permission_name)
-
             current_value = self.__get_table_permission_value('CHANNEL_R{}'.format(channel.id), permission_name, target.id)
 
             if not current_value == database_value:
@@ -314,9 +308,6 @@ class Permissions(object):
                 else:
                     self.db.table('CHANNEL_R{}'.format(channel.id)).update(permission_name).setTo(database_value).where('ID').equals(target.id).execute()
         elif isinstance(target, discord.abc.User):
-            if not self.__check_for_column('CHANNEL_U{}'.format(channel.id), permission_name):
-                self.__create_permission_columns('CHANNEL_U{}'.format(channel.id), permission_name)
-
             current_value = self.__get_table_permission_value('CHANNEL_U{}'.format(channel.id), permission_name, target.id)
 
             if not current_value == database_value:
@@ -335,9 +326,6 @@ class Permissions(object):
             database_value = 0
 
         if isinstance(target, discord.Role):
-            if not self.__check_for_column('GUILD_R{}'.format(guild.id), permission_name):
-                self.__create_permission_columns('GUILD_R{}'.format(guild.id), permission_name)
-
             current_value = self.__get_table_permission_value('GUILD_R{}'.format(guild.id), permission_name, target.id)
 
             if not current_value == database_value:
@@ -346,9 +334,6 @@ class Permissions(object):
                 else:
                     self.db.table('GUILD_R{}'.format(guild.id)).update(permission_name).setTo(database_value).where('ID').equals(target.id).execute()
         elif isinstance(target, discord.abc.User):
-            if not self.__check_for_column('GUILD_U{}'.format(guild.id), permission_name):
-                self.__create_permission_columns('GUILD_U{}'.format(guild.id), permission_name)
-
             current_value = self.__get_table_permission_value('GUILD_U{}'.format(guild.id), permission_name, target.id)
 
             if not current_value == database_value:

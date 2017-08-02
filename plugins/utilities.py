@@ -1,6 +1,6 @@
 """UTILITIES PLUGIN"""
 
-from plasmaBot.plugin import Plugin, ChannelResponse, command, event
+from plasmaBot.plugin import Plugin, ChannelResponse, TerminalResponse, command, event
 
 from SQLiteHelper import SQLiteHelper as sq
 from plasmaBot.utils import databaseTable
@@ -22,9 +22,11 @@ class Status(Plugin):
         if not self.db.table('status').tableExists():
             self.db.table('status').init(STATUS_DEFAULTS)
 
+        self.permissions.register('change_status', True, 'Status')
+
         self.status_ignore = ['restart', 'shutdown', 'afk', 'sleep', 'work', 'school']
 
-    @command('afk', 0, description='Set your status as "AFK" with an optional descriptive message', usage='afk [afk_message]')
+    @command('afk', 0, description='Set your status as "AFK" with an optional descriptive message', usage='afk [afk_message]', permission='change_status')
     async def afk_command(self, author, content, user_mentions, role_mentions):
         """Channel AFK command:  Allows users to set their status as 'AFK'"""
 
@@ -53,7 +55,7 @@ class Status(Plugin):
 
         return ChannelResponse(embed=discord.Embed(color=discord.Colour.purple()).set_author(name='{} is AFK{}{}'.format(author.display_name, ':   ' if len(afk_message) >= 1 else '...', afk_message), icon_url=author.avatar_url), expire=None)
 
-    @command('sleep', 0, description='Set your status as "asleep"', usage='sleep')
+    @command('sleep', 0, description='Set your status as "asleep"', usage='sleep', permission='change_status')
     async def sleep_command(self, author):
         """Channel sleep command: Allows users to set their status as 'asleep'"""
 
@@ -71,7 +73,7 @@ class Status(Plugin):
 
         return ChannelResponse(embed=discord.Embed(color=discord.Colour.purple()).set_author(name='{} is now sleeping... 💤'.format(author.display_name), icon_url=author.avatar_url), expire=None)
 
-    @command('work', 0, description='Set your status as "at work"', usage='work')
+    @command('work', 0, description='Set your status as "at work"', usage='work', permission='change_status')
     async def work_command(self, author):
         """Channel work command: Allows users to set their status as 'at work'"""
 
@@ -89,7 +91,7 @@ class Status(Plugin):
 
         return ChannelResponse(embed=discord.Embed(color=discord.Colour.purple()).set_author(name='{} is now at work... 💼'.format(author.display_name), icon_url=author.avatar_url), expire=None)
 
-    @command('school', 0, description='Set your status as "at school"', usage='school')
+    @command('school', 0, description='Set your status as "at school"', usage='school', permission='change_status')
     async def school_command(self, author):
         """Channel school command: Allows users to set their status as 'at school'"""
 
