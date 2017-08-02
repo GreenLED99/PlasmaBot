@@ -178,7 +178,7 @@ class PluginManager(object):
                     await channel.send(content='Invalid Command!', delete_after=60, reason='Help Message Automatic Deletion')
                     return
 
-                if not self.permissions.get_permission(permission, user, channel):
+                if not self.permissions.has_any_permission(permission.strip().split(), user, channel):
                     await channel.send(content='Invalid Permissions for this Command!', delete_after=60, reason='Help Message Automatic Deletion')
                     return
 
@@ -201,7 +201,7 @@ class PluginManager(object):
                     private = bool(command[4])
                     permission = command[5]
 
-                    if not hidden and (private or not isinstance(channel, discord.abc.PrivateChannel)) and self.permissions.get_permission(permission, user, channel):
+                    if not hidden and (private or not isinstance(channel, discord.abc.PrivateChannel)) and self.permissions.has_any_permission(permission.strip().split(), user, channel):
                         if not command[1] in plugin_sorted:
                             plugin_sorted[command[1]] = []
                         plugin_sorted[command[1]] += [command_str]
@@ -290,7 +290,7 @@ class PluginManager(object):
                     await message.channel.send('**Command *`{}`* is not enabled in Direct Messages**')
                 return
 
-            if not self.permissions.get_permission(permission, message.author, message.channel):
+            if not self.permissions.has_any_permission(permission.strip().split(), message.author, message.channel):
                 if not silence_errors:
                     await message.channel.send('**INVALID Permissions**: {} does not have the `{}` permission.'.format(message.author.display_name, permission), reason='Help Message Automatic Deletion')
                 return

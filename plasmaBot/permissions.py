@@ -210,6 +210,16 @@ class Permissions(object):
 
         return permission_value
 
+    def has_any_permission(self, permissions, user, location):
+        """Check if a user has any permission in a list of permission names"""
+        for permission in permissions:
+            permission_name = permission.strip().lower().replace(' ', '').replace(';', '').replace('(', '').replace(')', '').replace('-', '').replace('"', '')
+
+            if self.get_permission(permission_name, user, location):
+                return True
+
+        return False
+
     def get_permission(self, permission_name, user, location):
         """Get the value of a permission for a given user in a given channel or guild"""
         permission_name = permission_name.lower()
