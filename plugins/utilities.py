@@ -192,7 +192,8 @@ class Status(Plugin):
     @event
     async def on_message(self, message):
         """PLUGIN EVENT: Client.on_message()"""
+        prefix = self.config['presence']['prefix']
         if not message.content == '':
-            if not message.content.lower().split()[0][len(self.config['presence']['prefix']):].strip() in self.status_ignore:
+            if not (message.content.startswith(prefix) and message.content.lower().split()[0][len(prefix):].strip() in self.status_ignore):
                 await self.clear_status(message.author, message.channel)
                 await self.announce_status(message.mentions, message.channel)
