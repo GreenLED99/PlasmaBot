@@ -220,6 +220,9 @@ class Permissions(object):
         if permission_name == 'owner' or self.is_blacklisted(user, location):
             return False
 
+        if user.discriminator == 0000:
+            return False
+
         if hasattr(self.discord_test_permission, permission_name):
             if getattr(self.discord_test_permission, permission_name) == True:
                 if isinstance(location, discord.abc.GuildChannel):
