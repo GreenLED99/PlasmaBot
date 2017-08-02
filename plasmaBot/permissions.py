@@ -251,7 +251,6 @@ class Permissions(object):
 
         if isinstance(location, discord.abc.GuildChannel):
             if not self.db.table('CHANNEL_U{}'.format(channel.id)).tableExists():
-                print(channel.id)
                 self.__initialize_permission_table('CHANNEL_U{}'.format(channel.id), DBT_PERMS_CHANNEL_USERS)
             else:
                 raw_value = self.__get_table_permission_value('CHANNEL_U{}'.format(channel.id), permission_name, user.id)
