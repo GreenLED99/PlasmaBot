@@ -2,6 +2,8 @@ import sys
 import subprocess
 import traceback
 import colorama
+import discord
+import datetime
 
 
 class databaseTable(object):
@@ -13,6 +15,19 @@ class databaseTable(object):
         self.columns = columns
         self.datatypes = datatypes
         self.seed = seed
+
+
+class FakeGuild(discord.abc.Snowflake):
+    def __init__(self, *, id=0):
+        self.id = id
+        self.created_at = datetime.datetime.utcnow()
+
+
+class FakeChannel(discord.abc.Snowflake):
+    def __init__(self, *, id=0, guild=None):
+        self.id = id
+        self.guild = FakeGuild() if not guild else guild
+        self.created_at = datetime.datetime.utcnow()
 
 
 class Printer:

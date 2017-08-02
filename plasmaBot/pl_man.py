@@ -8,8 +8,8 @@ import datetime
 
 import discord
 
-from plasmaBot.defaults.tbl_presets import DBT_COMMANDS, DBT_PLUGINS, DBT_EVENTS
-from plasmaBot.utils import Shutdown, Restart
+from plasmaBot.defaults.tbl_presets import DBT_COMMANDS, DBT_PLUGINS, DBT_EVENTS, DBT_PLUGIN_SERVER_STATUS
+from plasmaBot.utils import FakeChannel, Shutdown, Restart
 from plasmaBot.plugin import *
 from plasmaBot.default import *
 from plugins import *
@@ -46,6 +46,9 @@ class PluginManager(object):
         self.db.table('plugins').init(DBT_PLUGINS)
         self.db.table('events').init(DBT_EVENTS)
 
+        if not self.db.table('server_state').tableExists():
+            self.db.table('server_state').init(DBT_PLUGIN_SERVER_STATUS)
+
     def load_all(self):
         """Load all plugins residing in the plugins folder."""
         self.plugins = {}
@@ -81,6 +84,78 @@ class PluginManager(object):
             self.db.table('plugins').insert(plugin.__name__, str(plugin.NAME), int(plugin.ENABLED), g_whitelist, c_whitelist, g_blacklist, c_blacklist).into('CLASS_NAME', 'FANCY_NAME', 'ENABLED', 'G_WHITELIST', 'C_WHITELIST', 'G_BLACKLIST', 'C_BLACKLIST')
 
             self.plugins[plugin.__name__] = plugin(self.client)
+
+        table_contents = self.cursor.execute('SELECT * FROM server_state LIMIT 1')
+        description = self.cursor.description
+        names = list(map(lambda x: x[0], description))
+
+        if not str(plugin.__name__) in names:
+            self.conn.execute('ALTER TABLE server_state ADD COLUMN {} INTEGER'.format('"' + str(plugin.__name__).replace(' ', '') + '"'))
+            self.conn.commit()
+
+    def check_enabled(self, plugin_name, location):
+        """Check if a plugin is enabled in a given channel"""
+        if isinstance(location, discord.Guild):
+            guild = location
+            channel = FakeChannel(guild=location)
+        elif isinstance(location, discord.abc.GuildChannel):
+            guild = location.guild
+            channel = location
+
+        else:
+            return True
+
+        enable_state = None
+        server_return = self.db.table('server_state').select(plugin_name).where('GUILD_ID').equals(guild.id).execute()
+
+        for value in server_return:
+            enable_state == value[0]
+
+        if enable_state == 0:
+            return False
+        else:
+            plugin_return = self.db.table('plugins').select('ENABLED', 'G_WHITELIST', 'C_WHITELIST', 'G_BLACKLIST', 'C_BLACKLIST').where('CLASS_NAME').equals(plugin_name).execute()
+            enabled = None
+            g_whitelist = None
+            c_whitelist = None
+            g_blacklist = None
+            c_blacklist = None
+
+            for item in plugin_return:
+                enabled = bool(item[0])
+
+                if not item[1] == '':
+                    g_whitelist = [int(id_item) for id_item in item[1].split(',')]
+                else:
+                    g_whitelist = []
+                if not item[2] == '':
+                    c_whitelist = [int(id_item) for id_item in item[2].split(',')]
+                else:
+                    c_whitelist = []
+                if not item[3] == '':
+                    g_blacklist = [int(id_item) for id_item in item[3].split(',')] if not g_whitelist else []
+                else:
+                    g_blacklist = []
+                if not item[4] == '':
+                    c_blacklist = [int(id_item) for id_item in item[4].split(',')] if not c_whitelist else []
+                else:
+                    c_blacklist = []
+
+            if not enabled:
+                return False
+
+            if guild.id in g_blacklist or channel.id in c_blacklist:
+                return False
+
+            if g_whitelist and not guild.id in g_whitelist:
+                if c_whitelist and not channel.id in c_whitelist:
+                    return False
+                elif channel.id in c_blacklist:
+                    return False
+            elif c_whitelist and not channel.id in c_whitelist:
+                return False
+
+            return True
 
     async def channel_help_command(self, channel, user, command=None):
         """Help Command for looking up bot commands within a Discord Channel"""
@@ -200,37 +275,8 @@ class PluginManager(object):
         if not enabled:
             return
 
-        if not plugin_return[3] == '':
-            g_whitelist = [int(id_item) for id_item in plugin_return[3].split(',')]
-        else:
-            g_whitelist = []
-
-        if not plugin_return[5] == '':
-            g_blacklist = [int(id_item) for id_item in plugin_return[5].split(',')] if not g_whitelist else []
-        else:
-            g_blacklist = []
-
-        if not plugin_return[4] == '':
-            c_whitelist = [int(id_item) for id_item in plugin_return[4].split(',')]
-        else:
-            c_whitelist = []
-
-        if not plugin_return[6] == '':
-            c_blacklist = [int(id_item) for id_item in plugin_return[6].split(',')] if not c_whitelist else []
-        else:
-            c_blacklist = []
-
-        if isinstance(message.channel, discord.abc.GuildChannel):
-            if message.channel.guild.id in g_blacklist or message.channel.id in c_blacklist or not enabled:
-                return
-
-            if g_whitelist and not message.channel.guild.id in g_whitelist:
-                if c_whitelist and not message.channel.id in c_whitelist:
-                    return
-                elif message.channel.id in c_blacklist:
-                    return
-            elif c_whitelist and not message.channel.id in c_whitelist:
-                return
+        if not self.check_enabled(plugin_name, message.channel):
+            return
 
         method = getattr(self.plugins[plugin_name], method_name)
 
@@ -531,4 +577,23 @@ class PluginManager(object):
         event_return = self.db.table('events').select('PLUGIN').where('EVENT_NAME').equals(event_name.lower()).execute()
 
         for plugin in event_return:
+            if event_name.lower() in ['on_message', 'on_message_delete', 'on_message_edit', 'on_message_edit', 'on_reaction_clear']:
+                if not self.check_enabled(plugin[0], args[0].channel):
+                    return
+            if event_name.lower() in ['on_member_join', 'on_member_remove', 'on_member_update', 'on_guild_role_create', 'on_guild_role_delete', 'on_guild_role_update', 'on_voice_state_update']:
+                if not self.check_enabled(plugin[0], args[0].guild):
+                    return
+            elif event_name.lower() in ['on_raw_message', 'on_raw_message_delete', 'on_raw_bulk_message_delete', 'on_raw_reaction_clear']:
+                if not self.check_enabled(plugin[0], self.client.get_channel(args[1])):
+                    return
+            elif event_name.lower() in ['on_typing', 'on_guild_channel_delete', 'on_guild_channel_create',  'on_guild_channel_update', 'on_guild_channel_pins_update', 'on_guild_join', 'on_guild_remove', 'on_guild_update', 'on_guild_emojis_update', 'on_guild_available', 'on_guild_unavailable', 'on_member_ban', 'on_member_unban', 'on_group_join', 'on_group_remove']:
+                if not self.check_enabled(plugin[0], args[0]):
+                    return
+            elif event_name.lower() in ['on_reaction_add', 'on_reaction_remove']:
+                if not self.check_enabled(plugin[0], args[0].message.channel):
+                    return
+            elif event_name.lower() in ['on_raw_reaction_add', 'on_raw_reaction_remove']:
+                if not self.check_enabled(plugin[0], self.client.get_channel(args[2])):
+                    return
+
             await getattr(self.plugins[plugin[0]], event_name)(*args, **kwargs)
