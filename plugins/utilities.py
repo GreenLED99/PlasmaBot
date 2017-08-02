@@ -22,11 +22,13 @@ class Status(Plugin):
         if not self.db.table('status').tableExists():
             self.db.table('status').init(STATUS_DEFAULTS)
 
-        self.permissions.register('change_status', True, 'Status')
+        self.permissions.register('set_status', True, 'Status') # Allow users to
+        self.permissions.register('remove_status', True, 'Status')
+        self.permissions.register('display_status', True, 'Status')
 
         self.status_ignore = ['restart', 'shutdown', 'afk', 'sleep', 'work', 'school']
 
-    @command('afk', 0, description='Set your status as "AFK" with an optional descriptive message', usage='afk [afk_message]', permission='change_status')
+    @command('afk', 0, description='Set your status as "AFK" with an optional descriptive message', usage='afk [afk_message]', permission='set_status')
     async def afk_command(self, author, content, user_mentions, role_mentions):
         """Channel AFK command:  Allows users to set their status as 'AFK'"""
 
@@ -55,7 +57,7 @@ class Status(Plugin):
 
         return ChannelResponse(embed=discord.Embed(color=discord.Colour.purple()).set_author(name='{} is AFK{}{}'.format(author.display_name, ':   ' if len(afk_message) >= 1 else '...', afk_message), icon_url=author.avatar_url), expire=None)
 
-    @command('sleep', 0, description='Set your status as "asleep"', usage='sleep', permission='change_status')
+    @command('sleep', 0, description='Set your status as "asleep"', usage='sleep', permission='set_status')
     async def sleep_command(self, author):
         """Channel sleep command: Allows users to set their status as 'asleep'"""
 
@@ -73,7 +75,7 @@ class Status(Plugin):
 
         return ChannelResponse(embed=discord.Embed(color=discord.Colour.purple()).set_author(name='{} is now sleeping... 💤'.format(author.display_name), icon_url=author.avatar_url), expire=None)
 
-    @command('work', 0, description='Set your status as "at work"', usage='work', permission='change_status')
+    @command('work', 0, description='Set your status as "at work"', usage='work', permission='set_status')
     async def work_command(self, author):
         """Channel work command: Allows users to set their status as 'at work'"""
 
@@ -91,7 +93,7 @@ class Status(Plugin):
 
         return ChannelResponse(embed=discord.Embed(color=discord.Colour.purple()).set_author(name='{} is now at work... 💼'.format(author.display_name), icon_url=author.avatar_url), expire=None)
 
-    @command('school', 0, description='Set your status as "at school"', usage='school', permission='change_status')
+    @command('school', 0, description='Set your status as "at school"', usage='school', permission='set_status')
     async def school_command(self, author):
         """Channel school command: Allows users to set their status as 'at school'"""
 
@@ -111,6 +113,7 @@ class Status(Plugin):
 
     async def clear_status(self, user, channel):
         """Clear the status of a given user from the status database table"""
+
         states = self.db.table('status').select('STATUS').where('USER_ID').equals(user.id).execute()
         user_status = None
 
@@ -118,6 +121,9 @@ class Status(Plugin):
             user_status = entry[0]
 
         if user_status:
+            if not self.permissions.get_permission('remove_status', user, channel):
+                return
+
             async with channel.typing():
                 self.db.table('status').delete().where('USER_ID').equals(user.id).execute()
                 await channel.send(embed=discord.Embed(color=discord.Colour.purple()).set_author(name='{} is no longer {}.'.format(user.display_name, user_status), icon_url=user.avatar_url), delete_after=15)
@@ -143,17 +149,18 @@ class Status(Plugin):
                 user_status = entry[0]
                 message = entry[1]
 
-            if user_status:
-                offline_members += [user]
+            if self.permissions.get_permission('display_status', user, channel):
+                if user_status:
+                    offline_members += [user]
 
-            if user_status == 'AFK':
-                afk_members += [[user, message]]
-            elif user_status == 'asleep':
-                sleep_members += [user]
-            elif user_status == 'at work':
-                work_members += [user]
-            elif user_status == 'at school':
-                school_members += [user]
+                if user_status == 'AFK':
+                    afk_members += [[user, message]]
+                elif user_status == 'asleep':
+                    sleep_members += [user]
+                elif user_status == 'at work':
+                    work_members += [user]
+                elif user_status == 'at school':
+                    school_members += [user]
 
         if len(offline_members) == 1:
             if len(afk_members) == 1:
