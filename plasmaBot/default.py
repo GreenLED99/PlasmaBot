@@ -225,7 +225,11 @@ class Default(Plugin):
                     guild = None
             if guild:
                 terminal = self.config['terminal']
-                terminal['channel'] = guild.default_channel.id
+
+                channels = sorted(guild.channels, key=lambda x: x.position)
+
+                terminal['channel'] = channels[0].id
+                print(channels[0].position)
                 terminal['messaging'] = True
                 self.config['terminal'] = terminal
 
