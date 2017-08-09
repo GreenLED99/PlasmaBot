@@ -288,13 +288,27 @@ class PluginManager(object):
             if no_private and private_channel:
                 if not silence_errors:
                     await asyncio.sleep(.075)
-                    await message.channel.send('**Command *`{}`* is not enabled in Direct Messages**')
+                    await message.channel.send('**Command `{}` is not enabled in Direct Messages**')
                 return
 
             if not self.permissions.has_any_permission(permission.strip().split() + ['owner'], message.author, message.channel):
                 if not silence_errors:
                     await asyncio.sleep(.075)
-                    await message.channel.send('**INVALID Permissions**: {} does not have the `{}` permission.'.format(message.author.display_name, permission), reason='Help Message Automatic Deletion')
+                    permissions_list = permission.strip().split()
+
+                    if len(permissions_list) == 1:
+                        await message.channel.send('**INVALID Permissions**: {} does not have the `{}` permission.'.format(message.author.display_name, permissions_list[0]), reason='Help Message Automatic Deletion')
+                    else:
+                        perm_string = '`{}`'.format(permissions_list.pop(0))
+                        last_perm = permissions_list.pop(-1)
+
+                        if len(permissions_list) >= 1:
+                             for permission_name in permissions_list:
+                                 perm_string += ', `{}`'.format(permission_name)
+
+                        perm_string += ' or `{}`'.format(last_perm)
+
+                        await message.channel.send('**INVALID Permissions**: {} does not have the {} permission.'.format(message.author.display_name, perm_string), reason='Help Message Automatic Deletion')
                 return
 
             argspec = inspect.signature(method)
