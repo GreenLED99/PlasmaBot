@@ -4,7 +4,7 @@ from SQLiteHelper import SQLiteHelper as sq
 import discord
 import copy
 
-from plasmaBot.defaults.tbl_presets import DBT_BLACKLIST, DBT_PERMS_CHANNEL_USERS, DBT_PERMS_GUILD_USERS, DBT_PERMS_CHANNEL_ROLES, DBT_PERMS_GUILD_ROLES
+from plasmaBot.defaults.tbl_presets import DBT_BLACKLIST, DBT_PERMS_TABLE
 from plasmaBot.utils import FakeChannel
 
 
@@ -26,7 +26,7 @@ class Permissions(object):
         self.permissions = {}
         self.permission_list = []
 
-        self.discord_test_permission = discord.Permissions.all()
+        self.discord_permissions = [name for name in dir(discord.Permissions) if isinstance(getattr(discord.Permissions, name), property)]
 
     def is_owner(self, user):
         """Check if a given user is considered a 'Bot Owner' via Config"""
@@ -188,7 +188,7 @@ class Permissions(object):
         names = list(map(lambda x: x[0], description))
         return True if str(column) in names else False
 
-    def __initialize_permission_table(self, table, default_obj):
+    def __initialize_permission_table(self, table, default_obj=DBT_PERMS_TABLE):
         """Initialize a table, with current registered permission columns included"""
         init_obj = copy.deepcopy(default_obj)
 
@@ -202,11 +202,17 @@ class Permissions(object):
 
     def __get_table_permission_value(self, table, permission_name, id_value):
         """Get the raw value of a bot permission for a given user in a given database table"""
+        if not self.db.table(table).tableExists():
+            self.__initialize_permission_table(self, table, DBT_PERMS_TABLE)
+
         permission_entry = self.db.table(table).select(permission_name).where('ID').equals(str(id_value)).execute()
         permission_value = None
 
         for entry in permission_entry:
-            permission_value = int(entry[0])
+            if entry[0] == None:
+                permission_value = None
+            else:
+                permission_value = int(entry[0])
 
         return permission_value
 
@@ -220,6 +226,19 @@ class Permissions(object):
 
         return False
 
+    def get_all_permissions(self, user, location):
+        """Get a dictionary containing the values of all possible permissions in a given location"""
+        permission_dict = {}
+        for discord_permission in self.discord_permissions:
+            discord_value = self.get_permission(discord_permission, user, location)
+            if not discord_value == None:
+                permission_dict[discord_permission] = discord_value
+        for bot_permission in self.permission_list:
+            bot_value = self.get_permission(bot_permission, user, location)
+            if not bot_value == None:
+                permission_dict[bot_permission] = bot_value
+        return permission_dict
+
     def get_permission(self, permission_name, user, location):
         """Get the value of a permission for a given user in a given channel or guild"""
         permission_name = permission_name.lower()
@@ -227,21 +246,24 @@ class Permissions(object):
         if permission_name == 'none':
             return True
 
+        if user.discriminator == 0000:
+            return False
+
+        if permission_name.lower() in self.discord_permissions:
+            if isinstance(location, discord.abc.GuildChannel):
+                return getattr(location.permissions_for(user), permission_name, None)
+            else:
+                partial_permission = discord.Permissions.text()
+                partial_permission.manage_messages = False
+                partial_permission.mention_everyone = False
+                partial_permission.send_tts_messages = False
+                return getattr(partial_permission, permission_name, None)
+
         if self.is_owner(user):
             return True
 
         if permission_name == 'owner' or self.is_blacklisted(user, location):
             return False
-
-        if user.discriminator == 0000:
-            return False
-
-        if hasattr(self.discord_test_permission, permission_name):
-            if getattr(self.discord_test_permission, permission_name) == True:
-                if isinstance(location, discord.abc.GuildChannel):
-                    return getattr(location.permissions_for(user), permission_name, None)
-                else:
-                    return None
 
         if isinstance(location, discord.abc.PrivateChannel):
             return True
@@ -261,7 +283,7 @@ class Permissions(object):
 
         if isinstance(location, discord.abc.GuildChannel):
             if not self.db.table('CHANNEL_U{}'.format(channel.id)).tableExists():
-                self.__initialize_permission_table('CHANNEL_U{}'.format(channel.id), DBT_PERMS_CHANNEL_USERS)
+                self.__initialize_permission_table('CHANNEL_U{}'.format(channel.id), DBT_PERMS_TABLE)
             else:
                 raw_value = self.__get_table_permission_value('CHANNEL_U{}'.format(channel.id), permission_name, user.id)
 
@@ -271,7 +293,7 @@ class Permissions(object):
                     return False
 
             if not self.db.table('CHANNEL_R{}'.format(channel.id)).tableExists():
-                self.__initialize_permission_table('CHANNEL_R{}'.format(channel.id), DBT_PERMS_CHANNEL_ROLES)
+                self.__initialize_permission_table('CHANNEL_R{}'.format(channel.id), DBT_PERMS_TABLE)
             else:
                 roles = sorted(user.roles, key=lambda x: x.position, reverse=True)
 
@@ -284,7 +306,7 @@ class Permissions(object):
                         return False
 
         if not self.db.table('GUILD_U{}'.format(guild.id)).tableExists():
-            self.__initialize_permission_table('GUILD_U{}'.format(guild.id), DBT_PERMS_GUILD_USERS)
+            self.__initialize_permission_table('GUILD_U{}'.format(guild.id), DBT_PERMS_TABLE)
         else:
             raw_value = self.__get_table_permission_value('GUILD_U{}'.format(guild.id), permission_name, user.id)
 
@@ -294,7 +316,7 @@ class Permissions(object):
                 return False
 
         if not self.db.table('GUILD_R{}'.format(guild.id)).tableExists():
-            self.__initialize_permission_table('GUILD_R{}'.format(guild.id), DBT_PERMS_GUILD_ROLES)
+            self.__initialize_permission_table('GUILD_R{}'.format(guild.id), DBT_PERMS_TABLE)
         else:
             roles = sorted(user.roles, key=lambda x: x.position, reverse=True)
 
@@ -308,35 +330,44 @@ class Permissions(object):
 
         return bool(self.permissions[permission_name]['default'])
 
-    def set_channel(self, channel, target, permission_name, value):
+    async def set_channel(self, channel, target, permission_name, value, reason=None):
         """Set the value of a permission in a channel for a given user or role"""
         if value == True:
             database_value = 1
         elif value == False:
             database_value = -1
         else:
+            value = None
             database_value = 0
 
         if isinstance(target, discord.Role):
-            current_value = self.__get_table_permission_value('CHANNEL_R{}'.format(channel.id), permission_name, target.id)
+            if permission_name.lower() in self.discord_permissions:
+                kwargs = {permission_name: value}
+                await channel.set_permissions(target, **kwargs)
+            else:
+                current_value = self.__get_table_permission_value('CHANNEL_R{}'.format(channel.id), permission_name, target.id)
 
-            if not current_value == database_value:
-                if current_value == None:
-                    self.db.table('CHANNEL_R{}'.format(channel.id)).insert(target.id, database_value).into('ID', permission_name)
-                else:
-                    self.db.table('CHANNEL_R{}'.format(channel.id)).update(permission_name).setTo(database_value).where('ID').equals(target.id).execute()
+                if not current_value == database_value:
+                    if current_value == None:
+                        self.db.table('CHANNEL_R{}'.format(channel.id)).insert(target.id, database_value).into('ID', permission_name)
+                    else:
+                        self.db.table('CHANNEL_R{}'.format(channel.id)).update(permission_name).setTo(database_value).where('ID').equals(target.id).execute()
         elif isinstance(target, discord.abc.User):
-            current_value = self.__get_table_permission_value('CHANNEL_U{}'.format(channel.id), permission_name, target.id)
+            if permission_name.lower() in self.discord_permissions:
+                kwargs = {permission_name: value}
+                await channel.set_permissions(target, **kwargs)
+            else:
+                current_value = self.__get_table_permission_value('CHANNEL_U{}'.format(channel.id), permission_name, target.id)
 
-            if not current_value == database_value:
-                if current_value == None:
-                    self.db.table('CHANNEL_U{}'.format(channel.id)).insert(target.id, database_value).into('ID', permission_name)
-                else:
-                    self.db.table('CHANNEL_U{}'.format(channel.id)).update(permission_name).setTo(database_value).where('ID').equals(target.id).execute()
+                if not current_value == database_value:
+                    if current_value == None:
+                        self.db.table('CHANNEL_U{}'.format(channel.id)).insert(target.id, database_value).into('ID', permission_name)
+                    else:
+                        self.db.table('CHANNEL_U{}'.format(channel.id)).update(permission_name).setTo(database_value).where('ID').equals(target.id).execute()
         else:
             raise Exception('Target was not a User or Role')
 
-    def set_guild(self, guild, target, permission_name, value):
+    async def set_guild(self, guild, target, permission_name, value):
         """Set the value of a permission in a guild for a given user or role"""
         if value == True:
             database_value = 1
@@ -344,13 +375,18 @@ class Permissions(object):
             database_value = 0
 
         if isinstance(target, discord.Role):
-            current_value = self.__get_table_permission_value('GUILD_R{}'.format(guild.id), permission_name, target.id)
+            if permission_name.lower() in self.discord_permissions:
+                permissions = target.permissions
+                setattr(permissions, permission_name, value)
+                await target.edit(permissions=permissions)
+            else:
+                current_value = self.__get_table_permission_value('GUILD_R{}'.format(guild.id), permission_name, target.id)
 
-            if not current_value == database_value:
-                if current_value == None:
-                    self.db.table('GUILD_R{}'.format(guild.id)).insert(target.id, database_value).into('ID', permission_name)
-                else:
-                    self.db.table('GUILD_R{}'.format(guild.id)).update(permission_name).setTo(database_value).where('ID').equals(target.id).execute()
+                if not current_value == database_value:
+                    if current_value == None:
+                        self.db.table('GUILD_R{}'.format(guild.id)).insert(target.id, database_value).into('ID', permission_name)
+                    else:
+                        self.db.table('GUILD_R{}'.format(guild.id)).update(permission_name).setTo(database_value).where('ID').equals(target.id).execute()
         elif isinstance(target, discord.abc.User):
             current_value = self.__get_table_permission_value('GUILD_U{}'.format(guild.id), permission_name, target.id)
 

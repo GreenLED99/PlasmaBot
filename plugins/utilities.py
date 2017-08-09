@@ -22,7 +22,7 @@ class Status(Plugin):
         if not self.db.table('status').tableExists():
             self.db.table('status').init(STATUS_DEFAULTS)
 
-        self.permissions.register('set_status', True, 'Status') # Allow users to
+        self.permissions.register('set_status', True, 'Status')
         self.permissions.register('remove_status', True, 'Status')
         self.permissions.register('display_status', True, 'Status')
 

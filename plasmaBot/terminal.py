@@ -102,7 +102,7 @@ class Terminal(object):
             else:
                 seperator = ''
 
-            embed_string += name_str + seperator + val_str + '\n'
+            embed_string += name_str + seperator + val_str.replace('\n', '\n - ') + '\n'
 
         if not embed.footer.text == discord.Embed.Empty:
             embed_string += '\n{}'.format(embed.footer.text)

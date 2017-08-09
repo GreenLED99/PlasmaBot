@@ -5,10 +5,100 @@ import datetime
 import discord
 import difflib
 
-class Default(Plugin):
+
+class PermissionsPlugin(Plugin):
+    """Plugin with commands oriented toward """
+
+    NAME = 'Permissions'
+
+    def on_plugin_load(self):
+        """Event fired on plugin load.  Initializes Plugin Elements."""
+        self.permissions.register('manage_permissions', False, 'Moderation')
+
+    def str_to_perm_value(self, string, channel=False):
+        if string.lower() in ['true', 'yes', '1']:
+            return True
+        elif channel:
+            if string.lower() in ['false', 'yes', '-1', '–1']:
+                return False
+            elif string.lower() in ['none', 'null', 'default', '0']:
+                return None
+            else:
+                return 'NOVALUE'
+        else:
+            if string.lower() in ['false', 'no', '0']:
+                return None
+            else:
+                return 'NOVALUE'
+
+    @command('perms', 0, description='View or Modify the permissions for a User or Role', usage='perms (User) - check the permissions for a user\nperms set [Role|User] [channel|guild] [Name] [Value] - set a Permissions Value', private=False, permission='owner administrator manage_permissions')
+    async def channel_permissions(self, author, channel, guild, user_mentions, role_mentions, args):
+        perms_commands = ['set']
+
+        if not dict(enumerate(args)).pop(0, '').lower().strip() in perms_commands: # View user permissions
+            if len(user_mentions) == 0:
+                user = author
+            else:
+                user = user_mentions[0]
+
+            all_permissions = self.permissions.get_all_permissions(user, channel)
+
+            permission_embed = discord.Embed(colour=discord.Colour.purple())
+            permissions_string = ''
+
+            for key, value in sorted(all_permissions.items()):
+                permissions_string += '{}  {}\n'.format('✅' if value else '❎', key)
+
+            permission_embed.add_field(name='Permissions for {} in {}'.format(user.display_name, '#{}'.format(channel.name) if isinstance(channel, discord.abc.GuildChannel) else 'Direct Message'), value=permissions_string)
+
+            await author.send(embed=permission_embed)
+            return ChannelResponse(content='Permissions Report sent via Direct Message! 📄')
+        else:
+            if args[0].lower().strip() == 'set' and len(args) >= 5: # Modify Permissions Value
+                target = None
+
+                if len(role_mentions) >= 1:
+                    if args[1] == role_mentions[0].mention:
+                        target = role_mentions[0]
+
+                if not target and len(user_mentions) >= 1:
+                    if args[1] == user_mentions[0].mention:
+                        target = user_mentions[0]
+
+                if not target:
+                    return ChannelResponse(send_help=True)
+
+                location = args[2].lower().strip()
+                if not location in ['channel', 'guild']:
+                    return ChannelResponse(send_help=True)
+
+                name = args[3].strip().lower()
+                if not (name in self.permissions.discord_permissions or name in self.permissions.permission_list):
+                    return ChannelResponse(send_help=True)
+
+                value = self.str_to_perm_value(args[4], channel=True if location == 'channel' else False)
+                if value == 'NOVALUE':
+                    return ChannelResponse(send_help=True)
+
+                if location == 'channel':
+                    await self.permissions.set_channel(channel, target, name, value)
+                elif location == 'guild':
+                    await self.permissions.set_guild(guild, target, name, value)
+                else:
+                    return ChannelResponse(send_help=True)
+
+                return ChannelResponse(content='Permission `{}` updated to `{}` for {} in current {}'.format(name, value, target.mention, location))
+            else:
+                return ChannelResponse(send_help=True)
+
+class Standard(Plugin):
     """The main, default PlasmaBot Plugin with standard commands and functionality"""
 
-    NAME = 'Main'
+    NAME = 'Standard'
+
+    def on_plugin_load(self):
+        """Event fired on plugin load.  Initializes Plugin Elements."""
+        self.permissions.register('check_id', True, 'Standard')
 
     @command('shutdown', 0, description='Shutdown the Bot Client', usage='shutdown', hidden=True, permission='owner')
     async def channel_shutdown(self, channel):
@@ -90,10 +180,16 @@ class Default(Plugin):
 
         return TerminalResponse(content='{} Invite URL: {}'.format(self.config['presence']['name'], oauth_url))
 
-    @command('id', 0, description='Get your ID!', usage='id')
-    async def channel_id(self, author):
+    @command('id', 0, description='Get your ID!', usage='id (user_mention)', permission='check_id')
+    async def channel_id(self, author, channel, user_mentions):
         """ID Command: Gets the ID of a user in a Discord Channel"""
-        return ChannelResponse(content='{}, Your ID is `{}`'.format(author.mention, author.id))
+        if len(user_mentions) == 0:
+            return ChannelResponse(content='{}, Your ID is `{}`'.format(author.mention, author.id))
+        else:
+            if self.permissions.has_any_permission(['owner', 'guild_owner', 'check_id'], author, channel):
+                return ChannelResponse(content='{}\'s ID is `{}`'.format(user_mentions[0].mention, user_mentions[0].id))
+            else:
+                return ChannelResponse(content='**INVALID Permissions**: {} does not have the `{}` permission'.format(author.display_name, 'check_id'))
 
     @command('verify', 0, description='Verify the current user\'s status', usage='verify', permission='owner')
     async def verify(self, author):
@@ -120,7 +216,7 @@ class Default(Plugin):
         self.config['terminal'] = terminal
         await self.terminal.detect_channel()
 
-    @command('channel', 1, description='Switch the attached channel used for terminal messaging', usage='channel [#name|id|None]')
+    @command('channel', 1, description='Switch the attached channel used for terminal messaging', usage='channel (#name|id)')
     async def terminal_channel(self, args):
         """Terminal Channel Command: Switch the attached channel used for terminal messaging"""
         if len(args) == 0:
@@ -205,7 +301,7 @@ class Default(Plugin):
         else:
             return TerminalResponse(send_help=True)
 
-    @command('guild', 1, description='Switch the attached channel to the primary channel of a given guild', usage='guild [name|ID|None]')
+    @command('guild', 1, description='Switch the attached channel to the primary channel of a given guild', usage='guild (name|ID)')
     async def terminal_guild(self, message, args):
         """Terminal Guild Command: Switch the attached channel to the primary channel of a given guild"""
         if len(args) == 0:
@@ -233,7 +329,7 @@ class Default(Plugin):
             else:
                 return TerminalResponse(content='No Guild Found with this name.')
 
-    @command('delete', 1, description='Delete a given message in the attached channel', usage='delete [ID|Index]')
+    @command('delete', 1, description='Delete a given message in the attached channel', usage='delete (ID|Index)')
     async def terminal_delete(self, args):
         """Terminal Delete:  Delete a given message in the attached channel."""
         if len(args) >= 1:

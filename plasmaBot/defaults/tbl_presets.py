@@ -17,10 +17,4 @@ DBT_EVENTS = databaseTable(['EVENT_NAME', 'PLUGIN'],
 DBT_BLACKLIST = databaseTable(['USER_ID', 'LOCATIONS'],
                               ['TEXT PRIMARY KEY NOT NULL', 'TEXT NOT NULL'])
 
-DBT_PERMS_CHANNEL_USERS = databaseTable(['ID'], ['TEXT PRIMARY KEY NOT NULL'])
-
-DBT_PERMS_GUILD_USERS = databaseTable(['ID'], ['TEXT PRIMARY KEY NOT NULL'])
-
-DBT_PERMS_CHANNEL_ROLES = databaseTable(['ID'], ['TEXT PRIMARY KEY NOT NULL'])
-
-DBT_PERMS_GUILD_ROLES = databaseTable(['ID'], ['TEXT PRIMARY KEY NOT NULL'])
+DBT_PERMS_TABLE = databaseTable(['ID'], ['TEXT PRIMARY KEY NOT NULL'])

@@ -178,11 +178,11 @@ class PluginManager(object):
                     await channel.send(content='Invalid Command!', delete_after=60, reason='Help Message Automatic Deletion')
                     return
 
-                if not self.permissions.has_any_permission(permission.strip().split(), user, channel):
+                if not self.permissions.has_any_permission(permission.strip().split() + ['owner'], user, channel):
                     await channel.send(content='Invalid Permissions for this Command!', delete_after=60, reason='Help Message Automatic Deletion')
                     return
 
-                help_embed = discord.Embed(title='Command Usage for `{}{}`:'.format(self.config['presence']['prefix'], command), color=discord.Colour.red()).set_footer(text='Requested by {}'.format(user.display_name), icon_url=user.avatar_url).add_field(name='Command Description', value=description, inline=False).add_field(name='Usage', value='{}{}'.format(self.config['presence']['prefix'], usage), inline=False)
+                help_embed = discord.Embed(title='Command Usage for `{}{}`:'.format(self.config['presence']['prefix'], command), color=discord.Colour.red()).set_footer(text='Requested by {}'.format(user.display_name), icon_url=user.avatar_url).add_field(name='Command Description', value=description, inline=False).add_field(name='Usage', value='{}{}'.format(self.config['presence']['prefix'], usage).replace('\n', '\n{}'.format(self.config['presence']['prefix'])), inline=False)
                 await channel.send(embed=help_embed, delete_after=60, reason='Help Message Automatic Deletion')
                 return
         else:
@@ -201,7 +201,7 @@ class PluginManager(object):
                     private = bool(command[4])
                     permission = command[5]
 
-                    if not hidden and (private or not isinstance(channel, discord.abc.PrivateChannel)) and self.permissions.has_any_permission(permission.strip().split(), user, channel):
+                    if not hidden and (private or not isinstance(channel, discord.abc.PrivateChannel)) and self.permissions.has_any_permission(permission.strip().split() + ['owner'], user, channel):
                         if not command[1] in plugin_sorted:
                             plugin_sorted[command[1]] = []
                         plugin_sorted[command[1]] += [command_str]
@@ -287,11 +287,13 @@ class PluginManager(object):
         with message.channel.typing():
             if no_private and private_channel:
                 if not silence_errors:
+                    await asyncio.sleep(.075)
                     await message.channel.send('**Command *`{}`* is not enabled in Direct Messages**')
                 return
 
-            if not self.permissions.has_any_permission(permission.strip().split(), message.author, message.channel):
+            if not self.permissions.has_any_permission(permission.strip().split() + ['owner'], message.author, message.channel):
                 if not silence_errors:
+                    await asyncio.sleep(.075)
                     await message.channel.send('**INVALID Permissions**: {} does not have the `{}` permission.'.format(message.author.display_name, permission), reason='Help Message Automatic Deletion')
                 return
 
@@ -348,7 +350,7 @@ class PluginManager(object):
                         params.pop(key)
 
                 if params:
-                    help_embed = discord.Embed(title='Command Usage for `{}{}` ({} Plugin):'.format(prefix, handler.strip(), fancy_plugin), color=discord.Colour.red()).set_footer(text='Requested by {}'.format(message.author.display_name), icon_url=discord.Embed.Empty).add_field(name='Command Description', value=description, inline=False).add_field(name='Usage', value='{}{}'.format(prefix, usage), inline=False)
+                    help_embed = discord.Embed(title='Command Usage for `{}{}` ({} Plugin):'.format(prefix, handler.strip(), fancy_plugin), color=discord.Colour.red()).set_footer(text='Requested by {}'.format(message.author.display_name), icon_url=discord.Embed.Empty).add_field(name='Command Description', value=description, inline=False).add_field(name='Usage', value='{}{}'.format(self.config['presence']['prefix'], usage).replace('\n', '\n{}'.format(self.config['presence']['prefix'])), inline=False)
 
                     await message.channel.send(embed=help_embed, delete_after=30, reason='Help Message Automatic Deletion')
                     return
@@ -359,7 +361,7 @@ class PluginManager(object):
 
                 if response and isinstance(response, ChannelResponse):
                     if response.send_help:
-                        help_embed = discord.Embed(title='Command Usage for `{}{}` ({} Plugin):'.format(prefix, handler.strip(), fancy_plugin), color=discord.Colour.red()).set_footer(text='Requested by {}'.format(message.author.display_name), icon_url=discord.Embed.Empty).add_field(name='Command Description', value=description, inline=False).add_field(name='Usage', value='{}{}'.format(prefix, usage), inline=False)
+                        help_embed = discord.Embed(title='Command Usage for `{}{}` ({} Plugin):'.format(prefix, handler.strip(), fancy_plugin), color=discord.Colour.red()).set_footer(text='Requested by {}'.format(message.author.display_name), icon_url=discord.Embed.Empty).add_field(name='Command Description', value=description, inline=False).add_field(name='Usage', value='{}{}'.format(self.config['presence']['prefix'], usage).replace('\n', '\n{}'.format(self.config['presence']['prefix'])), inline=False)
 
                         await message.channel.send(embed=help_embed, delete_after=response.expire, reason='Help Message Automatic Deletion')
                         return
