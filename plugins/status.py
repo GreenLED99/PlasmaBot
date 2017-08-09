@@ -1,4 +1,4 @@
-"""UTILITIES PLUGIN"""
+"""STATUS PLUGIN"""
 
 from plasmaBot.plugin import Plugin, ChannelResponse, TerminalResponse, command, event
 
@@ -8,7 +8,7 @@ from plasmaBot.utils import databaseTable
 import discord
 
 STATUS_DEFAULTS = databaseTable(['USER_ID', 'STATUS', 'MESSAGE'],
-                               ['INT PRIMARY KEY NOT NULL', 'TEXT NOT NULL', 'TEXT NOT NULL'])
+                                ['INT PRIMARY KEY NOT NULL', 'TEXT NOT NULL', 'TEXT NOT NULL'])
 
 class Status(Plugin):
     """A Plugin full of useful commands and features"""
