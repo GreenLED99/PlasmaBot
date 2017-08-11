@@ -288,7 +288,7 @@ class PluginManager(object):
             if no_private and private_channel:
                 if not silence_errors:
                     await asyncio.sleep(.075)
-                    await message.channel.send('**Command `{}` is not enabled in Direct Messages**')
+                    await message.channel.send('**Command `{}` is not enabled in Direct Messages**'.format(handler))
                 return
 
             if not self.permissions.has_any_permission(permission.strip().split() + ['owner'], message.author, message.channel):
