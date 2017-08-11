@@ -6,91 +6,6 @@ import discord
 import difflib
 
 
-class PermissionsPlugin(Plugin):
-    """Plugin with commands oriented toward """
-
-    NAME = 'Permissions'
-
-    def on_plugin_load(self):
-        """Event fired on plugin load.  Initializes Plugin Elements."""
-        self.permissions.register('manage_permissions', False, 'Moderation')
-
-    def str_to_perm_value(self, string, channel=False):
-        if string.lower() in ['true', 'yes', '1']:
-            return True
-        elif channel:
-            if string.lower() in ['false', 'yes', '-1', '–1']:
-                return False
-            elif string.lower() in ['none', 'null', 'default', '0']:
-                return None
-            else:
-                return 'NOVALUE'
-        else:
-            if string.lower() in ['false', 'no', '0']:
-                return None
-            else:
-                return 'NOVALUE'
-
-    @command('perms', 0, description='View or Modify the permissions for a User or Role', usage='perms (User) - check the permissions for a user\nperms set [Role|User] [channel|guild] [Name] [Value] - set a Permissions Value', private=False, permission='owner administrator manage_permissions')
-    async def channel_permissions(self, author, channel, guild, user_mentions, role_mentions, args):
-        perms_commands = ['set']
-
-        if not dict(enumerate(args)).pop(0, '').lower().strip() in perms_commands: # View user permissions
-            if len(user_mentions) == 0:
-                user = author
-            else:
-                user = user_mentions[0]
-
-            all_permissions = self.permissions.get_all_permissions(user, channel)
-
-            permission_embed = discord.Embed(colour=discord.Colour.purple())
-            permissions_string = ''
-
-            for key, value in sorted(all_permissions.items()):
-                permissions_string += '{}  {}\n'.format('✅' if value else '❎', key)
-
-            permission_embed.add_field(name='Permissions for {} in {}'.format(user.display_name, '#{}'.format(channel.name) if isinstance(channel, discord.abc.GuildChannel) else 'Direct Message'), value=permissions_string)
-
-            await author.send(embed=permission_embed)
-            return ChannelResponse(content='Permissions Report sent via Direct Message! 📄')
-        else:
-            if args[0].lower().strip() == 'set' and len(args) >= 5: # Modify Permissions Value
-                target = None
-
-                if len(role_mentions) >= 1:
-                    if args[1] == role_mentions[0].mention:
-                        target = role_mentions[0]
-
-                if not target and len(user_mentions) >= 1:
-                    if args[1] == user_mentions[0].mention:
-                        target = user_mentions[0]
-
-                if not target:
-                    return ChannelResponse(send_help=True)
-
-                location = args[2].lower().strip()
-                if not location in ['channel', 'guild']:
-                    return ChannelResponse(send_help=True)
-
-                name = args[3].strip().lower()
-                if not (name in self.permissions.discord_permissions or name in self.permissions.permission_list):
-                    return ChannelResponse(send_help=True)
-
-                value = self.str_to_perm_value(args[4], channel=True if location == 'channel' else False)
-                if value == 'NOVALUE':
-                    return ChannelResponse(send_help=True)
-
-                if location == 'channel':
-                    await self.permissions.set_channel(channel, target, name, value)
-                elif location == 'guild':
-                    await self.permissions.set_guild(guild, target, name, value)
-                else:
-                    return ChannelResponse(send_help=True)
-
-                return ChannelResponse(content='Permission `{}` updated to `{}` for {} in current {}'.format(name, value, target.mention, location))
-            else:
-                return ChannelResponse(send_help=True)
-
 class Standard(Plugin):
     """The main, default PlasmaBot Plugin with standard commands and functionality"""
 
@@ -385,3 +300,113 @@ class Standard(Plugin):
         new_message = message[len(self.config['presence']['prefix'] + 'edit '):]
         await last_message.edit(content=new_message)
         return TerminalResponse(content='Message Edited')
+
+
+class PermissionsPlugin(Plugin):
+    """Plugin with commands oriented toward """
+
+    NAME = 'Permissions'
+
+    def on_plugin_load(self):
+        """Event fired on plugin load.  Initializes Plugin Elements."""
+        self.permissions.register('manage_extended_permissions', False, 'Permissions')
+
+    def str_to_perm_value(self, string, channel=False):
+        if string.lower() in ['true', 'yes', '1']:
+            return True
+        elif channel:
+            if string.lower() in ['false', 'yes', '-1', '–1']:
+                return False
+            elif string.lower() in ['none', 'null', 'default', '0']:
+                return None
+            else:
+                return 'NOVALUE'
+        else:
+            if string.lower() in ['false', 'no', '0']:
+                return None
+            else:
+                return 'NOVALUE'
+
+    @command('perms', 0, description='View or Modify the permissions for a User or Role', usage='perms (User) - check the permissions for a user\nperms set [Role|User] [channel|guild] [Name] [Value] - set a Permissions Value', private=False, permission='owner administrator manage_extended_permissions')
+    async def channel_permissions(self, author, channel, guild, user_mentions, role_mentions, args):
+        perms_commands = ['set']
+
+        if not dict(enumerate(args)).pop(0, '').lower().strip() in perms_commands: # View user permissions
+            if len(user_mentions) == 0:
+                user = author
+            else:
+                user = user_mentions[0]
+
+            all_permissions = self.permissions.get_all_permissions(user, channel)
+
+            permission_embed = discord.Embed(colour=discord.Colour.purple())
+            permissions_string = ''
+
+            for key, value in sorted(all_permissions.items()):
+                permissions_string += '{}  {}\n'.format('✅' if value else '❎', key)
+
+            permission_embed.add_field(name='Permissions for {} in {}'.format(user.display_name, '#{}'.format(channel.name) if isinstance(channel, discord.abc.GuildChannel) else 'Direct Message'), value=permissions_string)
+
+            await author.send(embed=permission_embed)
+            return ChannelResponse(content='Permissions Report sent via Direct Message! 📄')
+        else:
+            if args[0].lower().strip() == 'set' and len(args) >= 5: # Modify Permissions Value
+                target = None
+
+                if len(role_mentions) >= 1:
+                    if args[1] == role_mentions[0].mention:
+                        target = role_mentions[0]
+
+                if not target and len(user_mentions) >= 1:
+                    if args[1] == user_mentions[0].mention:
+                        target = user_mentions[0]
+
+                if not target:
+                    role_names = [role.name for role in guild.roles]
+                    closest_role_name = difflib.get_close_matches(args[1].replace('%20', ' '), role_names, 10)
+                    possible_role = discord.utils.get(guild.roles, name=dict(enumerate(closest_role_name)).get(0,None))
+                    target = possible_role if possible_role else None
+
+                if not target:
+                    possible_member = guild.get_member_named(args[1])
+                    target = possible_member if possible_member else None
+
+                if not target and not args[1].isdigit():
+                    return ChannelResponse(send_help=True)
+
+                if not target:
+                    possible_role = discord.utils.get(guild.roles, id=int(args[1]))
+                    target = possible_role if possible_role else None
+
+                if not target:
+                    possible_member = guild.get_member(int(args[1]))
+                    target = possible_member if possible_member else None
+
+                if not target:
+                    return ChannelResponse(send_help=True)
+
+                location = args[2].lower().strip()
+                if not location in ['channel', 'guild']:
+                    return ChannelResponse(send_help=True)
+
+                name = args[3].strip().lower()
+                if not (name in self.permissions.discord_permissions or name in self.permissions.permission_list):
+                    return ChannelResponse(send_help=True)
+
+                if location == 'guild' and name in self.permissions.discord_permissions:
+                    return ChannelResponse(send_help=True)
+
+                value = self.str_to_perm_value(args[4], channel=True if location == 'channel' else False)
+                if value == 'NOVALUE':
+                    return ChannelResponse(send_help=True)
+
+                if location == 'channel':
+                    await self.permissions.set_channel(channel, target, name, value)
+                elif location == 'guild':
+                    await self.permissions.set_guild(guild, target, name, value)
+                else:
+                    return ChannelResponse(send_help=True)
+
+                return ChannelResponse(content='Permission `{}` updated to `{}` for {} in current {}'.format(name, value, target.mention, location))
+            else:
+                return ChannelResponse(send_help=True)
