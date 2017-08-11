@@ -216,6 +216,18 @@ class Permissions(object):
 
         return permission_value
 
+    def __check_for_row(self, table, id_value):
+        """Check for the existance of a row in a given table, based on the ID attribute provided"""
+        if not self.db.table(table).tableExists():
+            self.__initialize_permission_table(self, table, DBT_PERMS_TABLE)
+
+        permission_entry = self.db.table(table).select('ID').where('ID').equals(str(id_value)).execute()
+
+        for entry in permission_entry:
+            return True
+
+        return False
+
     def has_any_permission(self, permissions, user, location):
         """Check if a user has any permission in a list of permission names"""
         for permission in permissions:
@@ -348,7 +360,7 @@ class Permissions(object):
                 current_value = self.__get_table_permission_value('CHANNEL_R{}'.format(channel.id), permission_name, target.id)
 
                 if not current_value == database_value:
-                    if current_value == None:
+                    if not self.__check_for_row('CHANNEL_R{}'.format(channel.id), target.id):
                         self.db.table('CHANNEL_R{}'.format(channel.id)).insert(target.id, database_value).into('ID', permission_name)
                     else:
                         self.db.table('CHANNEL_R{}'.format(channel.id)).update(permission_name).setTo(database_value).where('ID').equals(target.id).execute()
@@ -360,7 +372,7 @@ class Permissions(object):
                 current_value = self.__get_table_permission_value('CHANNEL_U{}'.format(channel.id), permission_name, target.id)
 
                 if not current_value == database_value:
-                    if current_value == None:
+                    if not self.__check_for_row('CHANNEL_U{}'.format(channel.id), target.id):
                         self.db.table('CHANNEL_U{}'.format(channel.id)).insert(target.id, database_value).into('ID', permission_name)
                     else:
                         self.db.table('CHANNEL_U{}'.format(channel.id)).update(permission_name).setTo(database_value).where('ID').equals(target.id).execute()
@@ -383,15 +395,18 @@ class Permissions(object):
                 current_value = self.__get_table_permission_value('GUILD_R{}'.format(guild.id), permission_name, target.id)
 
                 if not current_value == database_value:
-                    if current_value == None:
+                    if not self.__check_for_row('GUILD_R{}'.format(guild.id), target.id):
                         self.db.table('GUILD_R{}'.format(guild.id)).insert(target.id, database_value).into('ID', permission_name)
                     else:
                         self.db.table('GUILD_R{}'.format(guild.id)).update(permission_name).setTo(database_value).where('ID').equals(target.id).execute()
         elif isinstance(target, discord.abc.User):
             current_value = self.__get_table_permission_value('GUILD_U{}'.format(guild.id), permission_name, target.id)
 
+            if permission_name.lower() in self.discord_permissions:
+                return # Discord-based permissions can not be set for a user with reach of entire guild
+
             if not current_value == database_value:
-                if current_value == None:
+                if not self.__check_for_row('GUILD_U{}'.format(guild.id), target.id):
                     self.db.table('GUILD_U{}'.format(guild.id)).insert(target.id, database_value).into('ID', permission_name)
                 else:
                     self.db.table('GUILD_U{}'.format(guild.id)).update(permission_name).setTo(database_value).where('ID').equals(target.id).execute()
