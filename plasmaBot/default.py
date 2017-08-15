@@ -309,7 +309,7 @@ class PermissionsPlugin(Plugin):
 
     def on_plugin_load(self):
         """Event fired on plugin load.  Initializes Plugin Elements."""
-        self.permissions.register('manage_extended_permissions', False, 'Permissions')
+        self.permissions.register('manage_permissions', False, 'Permissions')
 
     def str_to_perm_value(self, string, channel=False):
         if string.lower() in ['true', 'yes', '1']:
@@ -327,7 +327,7 @@ class PermissionsPlugin(Plugin):
             else:
                 return 'NOVALUE'
 
-    @command('perms', 0, description='View or Modify the permissions for a User or Role', usage='perms (User) - check the permissions for a user\nperms set [Role|User] [channel|guild] [Name] [Value] - set a Permissions Value', private=False, permission='owner administrator manage_extended_permissions')
+    @command('perms', 0, description='View or Modify the permissions for a User or Role', usage='perms (User) - check the permissions for a user\nperms set [Role|User] [channel|guild] [Name] [Value] - set a Permissions Value', private=False, permission='owner administrator manage_permissions')
     async def channel_permissions(self, author, channel, guild, user_mentions, role_mentions, args):
         perms_commands = ['set']
 
