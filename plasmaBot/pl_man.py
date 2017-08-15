@@ -321,7 +321,7 @@ class PluginManager(object):
                     method_kwargs['message'] = message
 
                 if params.pop('content', None):
-                    method_kwargs['content'] = message.content[len(prefix + handler + ' '):].strip()
+                    method_kwargs['content'] = ' '.join(message.content.strip().replace('\n','߷').split())[len(prefix + handler + ' '):].replace('߷', '\n')
 
                 if params.pop('channel', None):
                     method_kwargs['channel'] = message.channel
