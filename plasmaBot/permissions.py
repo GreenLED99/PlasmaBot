@@ -5,7 +5,6 @@ import discord
 import copy
 
 from plasmaBot.defaults.tbl_presets import DBT_BLACKLIST, DBT_PERMS_TABLE
-from plasmaBot.utils import FakeChannel
 
 
 class Permissions(object):
@@ -233,7 +232,9 @@ class Permissions(object):
         for permission in permissions:
             permission_name = permission.strip().lower().replace(' ', '').replace(';', '').replace('(', '').replace(')', '').replace('-', '').replace('"', '')
 
-            if self.get_permission(permission_name, user, location):
+            perm_value = self.get_permission(permission_name, user, location)
+
+            if perm_value:
                 return True
 
         return False
@@ -277,14 +278,15 @@ class Permissions(object):
         if permission_name == 'owner' or self.is_blacklisted(user, location):
             return False
 
-        if isinstance(location, discord.abc.PrivateChannel):
+        if isinstance(location, discord.DMChannel) or isinstance(location, discord.GroupChannel):
             return True
         elif isinstance(location, discord.Guild):
             guild = location
-            channel = FakeChannel(guild=guild)
         elif isinstance(location, discord.abc.GuildChannel):
             guild = location.guild
             channel = location
+        else:
+            raise Exception('ERROR:  Permission is not a Guild, Guild Channel, or Private Channel.  Pass a correct Location')
 
         if permission_name == 'guild_owner':
             if user.id == guild.owner_id:
