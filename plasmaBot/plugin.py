@@ -83,6 +83,10 @@ class Plugin(object, metaclass=PluginMeta):
         self.terminal = client.terminal
         self.on_plugin_load()
 
+    def filter_mentions(self, string):
+        """Method to filter mentions from a given string"""
+        return string.replace('@everyone', '@\u200beveryone').replace('@here', '@\u200bhere')
+
     def on_plugin_load(self):
         """Event fired on plugin load.  Designed for initializing attributes neccesary for plugin operation."""
         pass
