@@ -284,107 +284,114 @@ class PluginManager(object):
             self.printer.error('[CMD] Command Handler Not Found')
             return
 
-        with message.channel.typing():
-            if no_private and private_channel:
-                if not silence_errors:
-                    await asyncio.sleep(.075)
-                    await message.channel.send('**Command `{}` is not enabled in Direct Messages**'.format(handler))
+        await message.channel.trigger_typing()
+
+        if no_private and private_channel:
+            if not silence_errors:
+                await asyncio.sleep(.075)
+                await message.channel.send('**Command `{}` is not enabled in Direct Messages**'.format(handler))
+            return
+
+        if not self.permissions.has_any_permission(permission.strip().split() + ['owner'], message.author, message.channel):
+            if not silence_errors:
+                await asyncio.sleep(.075)
+                permissions_list = permission.strip().split()
+
+                if len(permissions_list) == 1:
+                    await message.channel.send('**INVALID Permissions**: {} does not have the `{}` permission.'.format(message.author.display_name, permissions_list[0]), reason='Help Message Automatic Deletion')
+                else:
+                    perm_string = '`{}`'.format(permissions_list.pop(0))
+                    last_perm = permissions_list.pop(-1)
+
+                    if len(permissions_list) >= 1:
+                         for permission_name in permissions_list:
+                             perm_string += ', `{}`'.format(permission_name)
+
+                    perm_string += ' or `{}`'.format(last_perm)
+
+                    await message.channel.send('**INVALID Permissions**: {} does not have the {} permission.'.format(message.author.display_name, perm_string), reason='Help Message Automatic Deletion')
+            return
+
+        argspec = inspect.signature(method)
+        params = argspec.parameters.copy()
+
+        try:
+            method_kwargs = {}
+
+            if params.pop('message', None):
+                method_kwargs['message'] = message
+
+            if params.pop('content', None):
+                method_kwargs['content'] = ' '.join(message.content.strip().replace('\n','߷').split())[len(prefix + handler + ' '):].replace('߷', '\n')
+
+            if params.pop('channel', None):
+                method_kwargs['channel'] = message.channel
+
+            if params.pop('author', None):
+                method_kwargs['author'] = message.author
+
+            if params.pop('guild', None):
+                if isinstance(message.channel, discord.abc.PrivateChannel):
+                    method_kwargs['guild'] = None
+                else:
+                    method_kwargs['guild'] = message.guild
+
+            if params.pop('guild_member', None):
+                if isinstance(message.channel, discord.abc.PrivateChannel):
+                    method_kwargs['guild_member'] = None
+                else:
+                    method_kwargs['guild_member'] = message.guild.me
+
+            if params.pop('user_mentions', None):
+                method_kwargs['user_mentions'] = message.mentions
+
+            if params.pop('channel_mentions', None):
+                method_kwargs['channel_mentions'] = message.channel_mentions
+
+            if params.pop('role_mentions', None):
+                method_kwargs['role_mentions'] = message.role_mentions
+
+            if params.pop('args', None):
+                method_kwargs['args'] = list(args)
+
+            for key, param in list(params.items()):
+                if not args and param.default is not inspect.Parameter.empty:
+                    params.pop(key)
+                    continue
+
+                if args:
+                    arg_value = args.pop(0)
+                    method_kwargs[key] = arg_value
+                    params.pop(key)
+
+            if params:
+                help_embed = discord.Embed(title='Command Usage for `{}{}` ({} Plugin):'.format(prefix, handler.strip(), fancy_plugin), color=discord.Colour.red()).set_footer(text='Requested by {}'.format(message.author.display_name), icon_url=discord.Embed.Empty).add_field(name='Command Description', value=description, inline=False).add_field(name='Usage', value='{}{}'.format(self.config['presence']['prefix'], usage).replace('\n', '\n{}'.format(self.config['presence']['prefix'])), inline=False)
+
+                await message.channel.send(embed=help_embed, delete_after=30, reason='Help Message Automatic Deletion')
                 return
 
-            if not self.permissions.has_any_permission(permission.strip().split() + ['owner'], message.author, message.channel):
-                if not silence_errors:
-                    await asyncio.sleep(.075)
-                    permissions_list = permission.strip().split()
+            await asyncio.sleep(0.075)
 
-                    if len(permissions_list) == 1:
-                        await message.channel.send('**INVALID Permissions**: {} does not have the `{}` permission.'.format(message.author.display_name, permissions_list[0]), reason='Help Message Automatic Deletion')
-                    else:
-                        perm_string = '`{}`'.format(permissions_list.pop(0))
-                        last_perm = permissions_list.pop(-1)
+            response = await method(**method_kwargs)
 
-                        if len(permissions_list) >= 1:
-                             for permission_name in permissions_list:
-                                 perm_string += ', `{}`'.format(permission_name)
+            if response and isinstance(response, ChannelResponse):
+                if response.send_help:
+                    await message.channel.trigger_typing()
 
-                        perm_string += ' or `{}`'.format(last_perm)
-
-                        await message.channel.send('**INVALID Permissions**: {} does not have the {} permission.'.format(message.author.display_name, perm_string), reason='Help Message Automatic Deletion')
-                return
-
-            argspec = inspect.signature(method)
-            params = argspec.parameters.copy()
-
-            try:
-                method_kwargs = {}
-
-                if params.pop('message', None):
-                    method_kwargs['message'] = message
-
-                if params.pop('content', None):
-                    method_kwargs['content'] = ' '.join(message.content.strip().replace('\n','߷').split())[len(prefix + handler + ' '):].replace('߷', '\n')
-
-                if params.pop('channel', None):
-                    method_kwargs['channel'] = message.channel
-
-                if params.pop('author', None):
-                    method_kwargs['author'] = message.author
-
-                if params.pop('guild', None):
-                    if isinstance(message.channel, discord.abc.PrivateChannel):
-                        method_kwargs['guild'] = None
-                    else:
-                        method_kwargs['guild'] = message.guild
-
-                if params.pop('guild_member', None):
-                    if isinstance(message.channel, discord.abc.PrivateChannel):
-                        method_kwargs['guild_member'] = None
-                    else:
-                        method_kwargs['guild_member'] = message.guild.me
-
-                if params.pop('user_mentions', None):
-                    method_kwargs['user_mentions'] = message.mentions
-
-                if params.pop('channel_mentions', None):
-                    method_kwargs['channel_mentions'] = message.channel_mentions
-
-                if params.pop('role_mentions', None):
-                    method_kwargs['role_mentions'] = message.role_mentions
-
-                if params.pop('args', None):
-                    method_kwargs['args'] = list(args)
-
-                for key, param in list(params.items()):
-                    if not args and param.default is not inspect.Parameter.empty:
-                        params.pop(key)
-                        continue
-
-                    if args:
-                        arg_value = args.pop(0)
-                        method_kwargs[key] = arg_value
-                        params.pop(key)
-
-                if params:
                     help_embed = discord.Embed(title='Command Usage for `{}{}` ({} Plugin):'.format(prefix, handler.strip(), fancy_plugin), color=discord.Colour.red()).set_footer(text='Requested by {}'.format(message.author.display_name), icon_url=discord.Embed.Empty).add_field(name='Command Description', value=description, inline=False).add_field(name='Usage', value='{}{}'.format(self.config['presence']['prefix'], usage).replace('\n', '\n{}'.format(self.config['presence']['prefix'])), inline=False)
 
-                    await message.channel.send(embed=help_embed, delete_after=30, reason='Help Message Automatic Deletion')
+                    await message.channel.send(embed=help_embed, delete_after=response.expire, reason='Help Message Automatic Deletion')
                     return
-
-                await asyncio.sleep(0.075)
-
-                response = await method(**method_kwargs)
-
-                if response and isinstance(response, ChannelResponse):
-                    if response.send_help:
-                        help_embed = discord.Embed(title='Command Usage for `{}{}` ({} Plugin):'.format(prefix, handler.strip(), fancy_plugin), color=discord.Colour.red()).set_footer(text='Requested by {}'.format(message.author.display_name), icon_url=discord.Embed.Empty).add_field(name='Command Description', value=description, inline=False).add_field(name='Usage', value='{}{}'.format(self.config['presence']['prefix'], usage).replace('\n', '\n{}'.format(self.config['presence']['prefix'])), inline=False)
-
-                        await message.channel.send(embed=help_embed, delete_after=response.expire, reason='Help Message Automatic Deletion')
-                        return
-                    else:
-                        await message.channel.send(response.content, embed=response.embed, file=response.file, delete_after=response.expire, reason='Bot Response Automatic Deletion')
-            except Shutdown or Restart:
-                raise
-            except Exception:
-                await self.logger.error(message.author, message.channel, message.content, traceback.format_exc())
+                else:
+                    await message.channel.trigger_typing()
+                    await asyncio.sleep(0.025)
+                    
+                    await message.channel.send(response.content, embed=response.embed, file=response.file, delete_after=response.expire, reason='Bot Response Automatic Deletion')
+        except Shutdown or Restart:
+            raise
+        except Exception:
+            await message.channel.trigger_typing()
+            await self.logger.error(message.author, message.channel, message.content, traceback.format_exc())
 
     async def terminal_help_command(self, command=None):
         """Help Command for looking up commands from within the terminal interface"""
