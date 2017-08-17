@@ -327,8 +327,8 @@ class PermissionsPlugin(Plugin):
             else:
                 return 'NOVALUE'
 
-    @command('perms', 0, description='View or Modify the permissions for a User or Role', usage='perms (User) - check the permissions for a user\nperms set [Role|User] [channel|guild] [Name] [Value] - set a Permissions Value', private=False, permission='owner administrator manage_permissions')
-    async def channel_permissions(self, author, channel, guild, user_mentions, role_mentions, args):
+    @command('perms', 0, description='View or Modify the permissions for a User or Role', usage='perms (User) - check the permissions for a user\nperms set [Role|User] [channel|\'channel\'|\'guild\'] [Name] [Value] - set a Permissions Value', private=False, permission='administrator manage_permissions')
+    async def channel_permissions(self, author, channel, guild, user_mentions, role_mentions, channel_mentions, args):
         perms_commands = ['set']
 
         if not dict(enumerate(args)).pop(0, '').lower().strip() in perms_commands: # View user permissions
@@ -386,8 +386,21 @@ class PermissionsPlugin(Plugin):
                     return ChannelResponse(send_help=True)
 
                 location = args[2].lower().strip()
-                if not location in ['channel', 'guild']:
-                    return ChannelResponse(send_help=True)
+
+                if location == 'channel':
+                    target_channel = channel
+                elif not location == 'guild':
+                    if len(channel_mentions) >= 1:
+                        if channel_mentions[0].mention == location:
+                            if self.permissions.has_any_permission(['administrator', 'manage_permissions'], author, channel_mentions[0]):
+                                target_channel = channel_mentions[0]
+                                location = 'channel'
+                            else:
+                                return ChannelResponse(content='**INVALID Permissions**: {} does not have the `administrator` or `manage_permissions` permission in {}.'.format(author.display_name, channel_mentions[0].mention))
+                        else:
+                            return ChannelResponse(send_help=True)
+                    else:
+                        return ChannelResponse(send_help=True)
 
                 name = args[3].strip().lower()
                 if not (name in self.permissions.discord_permissions or name in self.permissions.permission_list):
@@ -401,12 +414,12 @@ class PermissionsPlugin(Plugin):
                     return ChannelResponse(send_help=True)
 
                 if location == 'channel':
-                    await self.permissions.set_channel(channel, target, name, value)
+                    await self.permissions.set_channel(target_channel, target, name, value)
                 elif location == 'guild':
                     await self.permissions.set_guild(guild, target, name, value)
                 else:
                     return ChannelResponse(send_help=True)
 
-                return ChannelResponse(content='Permission `{}` updated to `{}` for {} in current {}'.format(name, value, target.mention, location))
+                return ChannelResponse(content='Permission `{}` updated to `{}` for {} in {}'.format(name, value, target.mention, guild.name if location == 'guild' else target_channel.mention))
             else:
                 return ChannelResponse(send_help=True)
