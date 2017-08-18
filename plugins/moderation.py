@@ -8,8 +8,8 @@ from plasmaBot.utils import databaseTable
 import discord
 import asyncio
 
-GUILD_DEFAULTS = databaseTable(['GUILD_ID', 'LOG_CHANNEL'],
-                               ['INT PRIMARY KEY NOT NULL', 'INT NOT NULL'])
+GUILD_DEFAULTS = databaseTable(['GUILD_ID', 'LOG_CHANNEL', 'STATIC_CHANNELS'],
+                               ['INT PRIMARY KEY NOT NULL', 'INT DEFAULT 0', 'STR DEFAULT ""'])
 
 
 class Moderation(Plugin):
@@ -19,18 +19,17 @@ class Moderation(Plugin):
 
     def on_plugin_load(self):
         """Event fired on plugin load.  Initializes Plugin elements."""
-        self.db = sq.Connect('plasmaBot/data/status')
+        self.db = sq.Connect('plasmaBot/data/moderation')
 
         if not self.db.table('guilds').tableExists():
             self.db.table('guilds').init(GUILD_DEFAULTS)
 
-        self.permissions.register('manage_logs', False, 'Permissions')
+        self.permissions.register('manage_logs', False, 'Moderation')
         self.permissions.register('text_mute_members', False, 'Moderation')
         self.permissions.register('text_deafen_members', False, 'Moderation')
 
     def get_log_channel(self, guild):
         """Method that queries the database for the log channel in a given guild"""
-
         guild_return = self.db.table('guilds').select('LOG_CHANNEL').where('GUILD_ID').equals(guild.id).execute()
         channel_id = None
 
@@ -63,6 +62,58 @@ class Moderation(Plugin):
         else:
             return ChannelResponse(content='No Moderation Log Channel set for {}'.format(guild.name))
 
+    def get_static_channels(self, guild):
+        """Method that gets a list of channel IDs that should be ignored by read-blocking moderation commands"""
+        guild_return = self.db.table('guilds').select('STATIC_CHANNELS').where('GUILD_ID').equals(guild.id).execute()
+        channel_ids = []
+
+        for index in guild_return:
+            if not index[0] == None:
+                for channel_id in str(index[0]).split():
+                    if channel_id.isdigit:
+                        channel_ids += [int(channel_id)]
+
+        return channel_ids
+
+    def save_static_channels(self, guild, channel_list):
+        """Method that saves a list of channel IDs to the moderation database"""
+        db_string = ' '.join([str(channel_id) for channel_id in channel_list])
+
+        guild_return = self.db.table('guilds').select('GUILD_ID').where('GUILD_ID').equals(guild.id).execute()
+        entry_does_exist = False
+
+        for index in guild_return:
+            entry_does_exist = True
+
+        if entry_does_exist:
+            self.db.table('guilds').update('STATIC_CHANNELS').setTo(db_string).where('GUILD_ID').equals(guild.id).execute()
+        else:
+            self.db.table('guilds').insert(guild.id, db_string).into('GUILD_ID', 'STATIC_CHANNELS')
+
+    def add_static_channel(self, channel):
+        """Method that marks a channel ID as static to be ignored by read-blocking moderation commands"""
+        if not isinstance(channel, discord.abc.GuildChannel):
+            return
+
+        channel_ids = self.get_static_channels(channel.guild)
+
+        if not channel.id in channel_ids:
+            channel_ids += [channel.id]
+
+        self.save_static_channels(channel.guild, channel_ids)
+
+    def remove_static_channel(self, channel):
+        """Method that removes a channel ID from the list of static channels that are ignored by read-blocking moderation commands"""
+        if not isinstance(channel, discord.abc.GuildChannel):
+            return
+
+        channel_ids = self.get_static_channels(channel.guild)
+
+        if channel.id in channel_ids:
+            channel_ids.remove(channel.id)
+
+        self.save_static_channels(channel.guild, channel_ids)
+
     @command('modlog', 0, description='Set the channel to which moderation actions are logged', usage='modlog (channel|None)', permission='administrator manage_logs', private=False)
     async def modlog_command(self, guild, channel_mentions, args):
         """Command that sets the moderation log channel for the current server"""
@@ -85,6 +136,36 @@ class Moderation(Plugin):
             return ChannelResponse(content='Error Setting Moderation Log Channel for {}'.format(guild.name))
         else:
             return ChannelResponse(content='Moderation Log Channel set to {} for {}'.format(channel_mentions[0].mention, guild.name))
+
+    @command('ignore', 0, description='Mark channels or a channel to be ignored by read-blocking moderation comamnds', usage='ignore [add|remove] [channel] (channel)...', permission='administrator text_deafen_members jail_members', private=False)
+    async def ignore_channel_command(self, guild, channel_mentions, args):
+        """Mark channels or a channel to be ignored by read-blocking moderation comamnds"""
+        if not args:
+            ignored_channels = [guild.get_channel(channel_id) for channel_id in self.get_static_channels(guild)]
+            ignored_channel_mentions = [' ' if not channel else channel.mention for channel in ignored_channels]
+            return ChannelResponse(content='The following channels are ignored in {}: {}'.format(guild.name, ' '.join(ignored_channel_mentions)))
+
+        if not len(args) >= 2:
+            return ChannelResponse(send_help=True)
+
+        if not len(channel_mentions) >= 1:
+            return ChannelResponse(send_help=True)
+
+        operation = args[0].strip().lower()
+
+        if operation == channel_mentions[0].mention:
+            return ChannelResponse(send_help=True)
+
+        if not operation in ['add', 'remove']:
+            return ChannelResponse(send_help=True)
+
+        for channel in channel_mentions:
+            if operation == 'add':
+                self.add_static_channel(channel)
+            else:
+                self.remove_static_channel(channel)
+
+        return ChannelResponse(content='Successfully {} the following channels {} the ignore list: {}'.format('added' if operation == 'add' else 'removed', 'to' if operation == 'add' else 'from', ' '.join([channel.mention for channel in channel_mentions])))
 
     @command('mute', 0, description='Prevent a guild member from sending messages to a given text channel', usage='mute [user] (channel) [reason]', permission='administrator text_mute_members', private=False)
     async def text_mute_command(self, author, channel, guild, content, user_mentions, channel_mentions, args):
@@ -360,18 +441,24 @@ class Moderation(Plugin):
 
             error_channels = []
 
+            static_channels = self.get_static_channels(guild)
+            print(static_channels)
+            print(channel.id)
+
             if channel.permissions_for(user).read_messages:
-                try:
-                    await channel.set_permissions(user, reason='TEXT-DEAFEN: {}'.format(reason), read_messages=False)
-                except:
-                    error_channels += [channel]
+                if not channel.id in static_channels:
+                    try:
+                        await channel.set_permissions(user, reason='TEXT-DEAFEN: {}'.format(reason), read_messages=False)
+                    except:
+                        error_channels += [channel]
 
             for target in guild.text_channels:
                 if target.permissions_for(user).read_messages and not channel == target:
-                    try:
-                        await target.set_permissions(user, reason='TEXT-DEAFEN: {}'.format(reason), read_messages=False)
-                    except:
-                        error_channels += [target]
+                    if not target.id in static_channels:
+                        try:
+                            await target.set_permissions(user, reason='TEXT-DEAFEN: {}'.format(reason), read_messages=False)
+                        except:
+                            error_channels += [target]
 
             if error_channels:
                 await deafen_message.edit(content=self.filter_mentions('Unable to deafen {} in {} of {} channels'.format(user, len(error_channels), len(guild.text_channels))))
