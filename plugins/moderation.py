@@ -442,8 +442,6 @@ class Moderation(Plugin):
             error_channels = []
 
             static_channels = self.get_static_channels(guild)
-            print(static_channels)
-            print(channel.id)
 
             if channel.permissions_for(user).read_messages:
                 if not channel.id in static_channels:
