@@ -265,6 +265,11 @@ class Permissions(object):
         if permission_name.lower() in self.discord_permissions:
             if isinstance(location, discord.abc.GuildChannel):
                 return getattr(location.permissions_for(user), permission_name, None)
+            elif isinstance(location, discord.Guild):
+                for role in user.roles:
+                    if getattr(role.permissions, permission_name) == True:
+                        return True
+                return False
             else:
                 partial_permission = discord.Permissions.text()
                 partial_permission.manage_messages = False
