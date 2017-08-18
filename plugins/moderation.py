@@ -385,7 +385,7 @@ class Moderation(Plugin):
             return ChannelResponse(content='*Muting one\'s self is rarely beneficial*')
 
         if self.permissions.has_any_permission(['administrator', 'text_deafen_members'], user, channel):
-            return ChannelResponse(content='*Member can not be muted due to elevated mute permissions*')
+            return ChannelResponse(content='*Member can not be deafened due to elevated deafen permissions*')
 
         channel_perms = self.permissions.has_any_permission(['administrator', 'text_deafen_members'], author, channel)
         guild_perms = self.permissions.has_any_permission(['administrator', 'text_deafen_members'], author, channel.guild)
